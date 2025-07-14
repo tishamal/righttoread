@@ -1,0 +1,42 @@
+/* App.css */
+.App {
+  text-align: center;
+}
+
+/* Custom scrollbar for sidebar */
+.MuiDrawer-paper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.MuiDrawer-paper::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.MuiDrawer-paper::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.MuiDrawer-paper::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Custom card hover effects */
+.MuiCard-root {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.MuiCard-root:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Smooth transitions for buttons */
+.MuiButton-root {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Search input styling */
+.MuiInputBase-input::placeholder {
+  color: rgba(0, 0, 0, 0.6);
+}
