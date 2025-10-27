@@ -245,6 +245,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 <Typography variant="body1" color="text.secondary">
                   Log in your account
                 </Typography>
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={() => onLogin('demo@example.com', 'demo123')}
+                  sx={{ mt: 1 }}
+                >
+                  Skip Login (Demo Mode)
+                </Button>
               </Box>
 
               <form onSubmit={handleSubmit}>

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import './App.css';
 import AddBookModal from './components/AddBookModal';
 import Login from './components/Login';
+import AnalyticsDashboard from './components/AnalyticsDashboard';
+import DigitalVersionReview from './components/DigitalVersionReview';
 import {
   Box,
   CssBaseline,
@@ -41,6 +43,8 @@ import {
   FilterList as FilterIcon,
   Add as AddIcon,
   MenuBook as BookIcon,
+  Equalizer as AnalyticsIcon,
+  Audiotrack as AudioIcon,
 } from '@mui/icons-material';
 import { styled, alpha } from '@mui/material/styles';
 
@@ -175,6 +179,8 @@ function App() {
 
   const navigationItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, id: 'Dashboard' },
+    { text: 'Analytics', icon: <AnalyticsIcon />, id: 'Analytics' },
+    { text: 'Digital Review', icon: <AudioIcon />, id: 'DigitalReview' },
     { text: 'Account', icon: <AccountIcon />, id: 'Account' },
     { text: 'Settings', icon: <SettingsIcon />, id: 'Settings' },
   ];
@@ -240,6 +246,148 @@ function App() {
   if (!isAuthenticated) {
     return <Login onLogin={handleLogin} />;
   }
+
+  const renderContent = () => {
+    switch (currentPage) {
+      case 'Analytics':
+        return <AnalyticsDashboard />;
+      case 'DigitalReview':
+        return <DigitalVersionReview />;
+      case 'Dashboard':
+      default:
+        return (
+          <>
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h4" fontWeight="bold" gutterBottom>
+                Dashboard
+              </Typography>
+              
+              {/* Grade Selector */}
+              <FormControl sx={{ minWidth: 200, mb: 3 }}>
+                <Select
+                  value={selectedGrade}
+                  onChange={(e) => setSelectedGrade(e.target.value)}
+                  variant="outlined"
+                  size="small"
+                >
+                  <MenuItem value="All Grades">All Grades</MenuItem>
+                  <MenuItem value="Grade 9">Grade 9</MenuItem>
+                  <MenuItem value="Grade 10">Grade 10</MenuItem>
+                  <MenuItem value="Grade 11">Grade 11</MenuItem>
+                  <MenuItem value="Grade 12">Grade 12</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+
+            {/* Statistics Cards */}
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 3, textAlign: 'center', bgcolor: '#e3f2fd' }}>
+                  <Typography variant="h4" fontWeight="bold" color="primary">
+                    {totalBooks}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Total Books
+                  </Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 3, textAlign: 'center', bgcolor: '#e8f5e8' }}>
+                  <Typography variant="h4" fontWeight="bold" color="success.main">
+                    {availableBooks}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Available
+                  </Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 3, textAlign: 'center', bgcolor: '#fff3e0' }}>
+                  <Typography variant="h4" fontWeight="bold" color="warning.main">
+                    {limitedBooks}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Limited Stock
+                  </Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 3, textAlign: 'center', bgcolor: '#ffebee' }}>
+                  <Typography variant="h4" fontWeight="bold" color="error.main">
+                    {outOfStockBooks}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Out of Stock
+                  </Typography>
+                </Paper>
+              </Grid>
+            </Grid>
+
+            {/* Actions Bar */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h5" fontWeight="bold">
+                Textbook Library
+              </Typography>
+              <Stack direction="row" spacing={2}>
+                <Button
+                  variant="outlined"
+                  startIcon={<FilterIcon />}
+                  sx={{ textTransform: 'none' }}
+                >
+                  Filter
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  sx={{ textTransform: 'none' }}
+                  onClick={() => setAddBookModalOpen(true)}
+                >
+                  Create Book
+                </Button>
+              </Stack>
+            </Box>
+
+            {/* Books Grid */}
+            <Grid container spacing={3}>
+              {filteredBooks.map((book) => (
+                <Grid item xs={12} sm={6} md={4} lg={3} key={book.id}>
+                  <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <CardMedia
+                      component="img"
+                      height="200"
+                      image={book.image}
+                      alt={book.title}
+                      sx={{ objectFit: 'cover' }}
+                    />
+                    <CardContent sx={{ flexGrow: 1 }}>
+                      <Typography variant="h6" component="h2" gutterBottom noWrap>
+                        {book.title}
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary" gutterBottom>
+                        {book.author}
+                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+                        <Chip
+                          label={book.grade}
+                          size="small"
+                          variant="outlined"
+                        />
+                        <Chip
+                          label={book.status}
+                          size="small"
+                          color={getStatusColor(book.status) as any}
+                          variant="filled"
+                        />
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </>
+        );
+    }
+  };
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -344,134 +492,7 @@ function App() {
         <Toolbar />
         
         <Container maxWidth="xl">
-          {/* Dashboard Header */}
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h4" fontWeight="bold" gutterBottom>
-              Dashboard
-            </Typography>
-            
-            {/* Grade Selector */}
-            <FormControl sx={{ minWidth: 200, mb: 3 }}>
-              <Select
-                value={selectedGrade}
-                onChange={(e) => setSelectedGrade(e.target.value)}
-                variant="outlined"
-                size="small"
-              >
-                <MenuItem value="All Grades">All Grades</MenuItem>
-                <MenuItem value="Grade 9">Grade 9</MenuItem>
-                <MenuItem value="Grade 10">Grade 10</MenuItem>
-                <MenuItem value="Grade 11">Grade 11</MenuItem>
-                <MenuItem value="Grade 12">Grade 12</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-
-          {/* Statistics Cards */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Paper sx={{ p: 3, textAlign: 'center', bgcolor: '#e3f2fd' }}>
-                <Typography variant="h4" fontWeight="bold" color="primary">
-                  {totalBooks}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  Total Books
-                </Typography>
-              </Paper>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Paper sx={{ p: 3, textAlign: 'center', bgcolor: '#e8f5e8' }}>
-                <Typography variant="h4" fontWeight="bold" color="success.main">
-                  {availableBooks}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  Available
-                </Typography>
-              </Paper>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Paper sx={{ p: 3, textAlign: 'center', bgcolor: '#fff3e0' }}>
-                <Typography variant="h4" fontWeight="bold" color="warning.main">
-                  {limitedBooks}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  Limited Stock
-                </Typography>
-              </Paper>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Paper sx={{ p: 3, textAlign: 'center', bgcolor: '#ffebee' }}>
-                <Typography variant="h4" fontWeight="bold" color="error.main">
-                  {outOfStockBooks}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  Out of Stock
-                </Typography>
-              </Paper>
-            </Grid>
-          </Grid>
-
-          {/* Actions Bar */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" fontWeight="bold">
-              Textbook Library
-            </Typography>
-            <Stack direction="row" spacing={2}>
-              <Button
-                variant="outlined"
-                startIcon={<FilterIcon />}
-                sx={{ textTransform: 'none' }}
-              >
-                Filter
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                sx={{ textTransform: 'none' }}
-                onClick={() => setAddBookModalOpen(true)}
-              >
-                Create Book
-              </Button>
-            </Stack>
-          </Box>
-
-          {/* Books Grid */}
-          <Grid container spacing={3}>
-            {filteredBooks.map((book) => (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={book.id}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  <CardMedia
-                    component="img"
-                    height="200"
-                    image={book.image}
-                    alt={book.title}
-                    sx={{ objectFit: 'cover' }}
-                  />
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography variant="h6" component="h2" gutterBottom noWrap>
-                      {book.title}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary" gutterBottom>
-                      {book.author}
-                    </Typography>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-                      <Chip
-                        label={book.grade}
-                        size="small"
-                        variant="outlined"
-                      />
-                      <Chip
-                        label={book.status}
-                        size="small"
-                        color={getStatusColor(book.status) as any}
-                        variant="filled"
-                      />
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
+          {renderContent()}
         </Container>
 
         {/* Add Book Modal */}
