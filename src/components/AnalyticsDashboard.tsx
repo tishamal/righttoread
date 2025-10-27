@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Paper,
@@ -12,6 +12,7 @@ import {
   Select,
   FormControl,
   InputLabel,
+  CircularProgress,
 } from '@mui/material';
 import {
   BarChart,
@@ -27,6 +28,7 @@ import {
   Pie,
   Cell,
 } from 'recharts';
+import { analyticsAPI } from '../services/api';
 
 // Sample analytics data - replace with real data from your backend
 const monthlyUsage = [
@@ -38,17 +40,67 @@ const monthlyUsage = [
   { month: 'Jun', users: 2390, books: 3800, amt: 2500 },
 ];
 
-const bookUsageData = [
-  { name: 'Grade 9', value: 400 },
-  { name: 'Grade 10', value: 300 },
-  { name: 'Grade 11', value: 300 },
-  { name: 'Grade 12', value: 200 },
-];
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 const AnalyticsDashboard: React.FC = () => {
   const [timeRange, setTimeRange] = React.useState('month');
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [bookUsageData, setBookUsageData] = useState<any[]>([]);
+  const [statsData, setStatsData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, [timeRange]);
+
+  const fetchAnalyticsData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch overall statistics
+      const stats = await analyticsAPI.getStats();
+      setAnalytics(stats);
+
+      // Fetch book statistics
+      const bookStats = await analyticsAPI.getBookStats();
+      
+      // Convert book stats to chart data
+      if (bookStats && Array.isArray(bookStats)) {
+        const gradeData = bookStats.map((book: any) => ({
+          name: `Grade ${book.grade}`,
+          value: book.total_views || 0,
+        }));
+        setBookUsageData(gradeData);
+      }
+
+      // Prepare stats cards data
+      if (stats) {
+        setStatsData([
+          { title: 'Total Active Users', value: stats.total_users || '0', change: '+0%' },
+          { title: 'Books Downloaded', value: stats.total_downloads || '0', change: '+0%' },
+          { title: 'Total Views', value: stats.total_views || '0', change: '+0%' },
+          { title: 'Active Sessions', value: stats.active_sessions || '0', change: '+0%' },
+        ]);
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+      // Use default empty data on error
+      setBookUsageData([
+        { name: 'Grade 3', value: 0 },
+        { name: 'Grade 4', value: 0 },
+        { name: 'Grade 5', value: 0 },
+      ]);
+      setStatsData([
+        { title: 'Total Active Users', value: '0', change: '+0%' },
+        { title: 'Books Downloaded', value: '0', change: '+0%' },
+        { title: 'Total Views', value: '0', change: '+0%' },
+        { title: 'Active Sessions', value: '0', change: '+0%' },
+      ]);
+      setLoading(false);
+    }
+  };
 
   return (
     <Box p={3}>
@@ -71,108 +123,111 @@ const AnalyticsDashboard: React.FC = () => {
         </FormControl>
       </Stack>
 
-      {/* Quick Stats */}
-      <Grid container spacing={3} mb={4}>
-        {[
-          { title: 'Total Active Users', value: '12,345', change: '+12%' },
-          { title: 'Books Read', value: '45,678', change: '+8%' },
-          { title: 'Average Reading Time', value: '32 mins', change: '+5%' },
-          { title: 'Total Sessions', value: '89,012', change: '+15%' },
-        ].map((stat) => (
-          <Grid item xs={12} sm={6} md={3} key={stat.title}>
-            <Paper sx={{ p: 3 }}>
-              <Typography color="text.secondary" variant="body2" gutterBottom>
-                {stat.title}
-              </Typography>
-              <Typography variant="h4" fontWeight="bold">
-                {stat.value}
-              </Typography>
-              <Typography
-                color={stat.change.startsWith('+') ? 'success.main' : 'error.main'}
-                variant="body2"
-              >
-                {stat.change} vs last period
-              </Typography>
-            </Paper>
+      {loading ? (
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          {/* Quick Stats */}
+          <Grid container spacing={3} mb={4}>
+            {statsData.map((stat) => (
+              <Grid item xs={12} sm={6} md={3} key={stat.title}>
+                <Paper sx={{ p: 3 }}>
+                  <Typography color="text.secondary" variant="body2" gutterBottom>
+                    {stat.title}
+                  </Typography>
+                  <Typography variant="h4" fontWeight="bold">
+                    {stat.value}
+                  </Typography>
+                  <Typography
+                    color={stat.change.startsWith('+') ? 'success.main' : 'error.main'}
+                    variant="body2"
+                  >
+                    {stat.change} vs last period
+                  </Typography>
+                </Paper>
+              </Grid>
+            ))}
           </Grid>
-        ))}
-      </Grid>
 
-      {/* Charts */}
-      <Grid container spacing={3}>
-        {/* User Activity Chart */}
-        <Grid item xs={12} lg={8}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              User Activity
-            </Typography>
-            <LineChart
-              width={800}
-              height={300}
-              data={monthlyUsage}
-              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="users"
-                stroke="#8884d8"
-                activeDot={{ r: 8 }}
-              />
-              <Line type="monotone" dataKey="books" stroke="#82ca9d" />
-            </LineChart>
-          </Paper>
-        </Grid>
+          {/* Charts */}
+          <Grid container spacing={3}>
+            {/* User Activity Chart */}
+            <Grid item xs={12} lg={8}>
+              <Paper sx={{ p: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  User Activity
+                </Typography>
+                <LineChart
+                  width={800}
+                  height={300}
+                  data={monthlyUsage}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="users"
+                    stroke="#8884d8"
+                    activeDot={{ r: 8 }}
+                  />
+                  <Line type="monotone" dataKey="books" stroke="#82ca9d" />
+                </LineChart>
+              </Paper>
+            </Grid>
 
-        {/* Book Usage by Grade */}
-        <Grid item xs={12} lg={4}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Book Usage by Grade
-            </Typography>
-            <PieChart width={400} height={300}>
-              <Pie
-                data={bookUsageData}
-                cx={200}
-                cy={150}
-                innerRadius={60}
-                outerRadius={80}
-                fill="#8884d8"
-                paddingAngle={5}
-                dataKey="value"
-              >
-                {bookUsageData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </Paper>
-        </Grid>
+            {/* Book Usage by Grade */}
+            <Grid item xs={12} lg={4}>
+              <Paper sx={{ p: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Book Usage by Grade
+                </Typography>
+                <PieChart width={400} height={300}>
+                  <Pie
+                    data={bookUsageData}
+                    cx={200}
+                    cy={150}
+                    innerRadius={60}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {bookUsageData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </Paper>
+            </Grid>
 
-        {/* Reading Time Distribution */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Reading Time Distribution
-            </Typography>
-            <BarChart width={1100} height={300} data={monthlyUsage}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="users" fill="#8884d8" />
-              <Bar dataKey="books" fill="#82ca9d" />
-            </BarChart>
-          </Paper>
-        </Grid>
-      </Grid>
+            {/* Reading Time Distribution */}
+            <Grid item xs={12}>
+              <Paper sx={{ p: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Reading Time Distribution
+                </Typography>
+                <BarChart width={1100} height={300} data={monthlyUsage}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="users" fill="#8884d8" />
+                  <Bar dataKey="books" fill="#82ca9d" />
+                </BarChart>
+              </Paper>
+            </Grid>
+          </Grid>
+        </>
+      )}
     </Box>
   );
 };

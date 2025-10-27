@@ -3,7 +3,7 @@
 ## Project Overview
 This is a React-based admin dashboard for managing textbooks in the "Right to Read" educational program.Home Page should show number of available books,Schools that this application is being used. The application provides functionality for tracking textbook inventory, managing book availability, and organizing content by grade levels. All the published books will go though a process of convering it to digital version of it with SSML and audio format. There should be a page to reivew generated audio files and SSML text for quality before publishing and approval. Mobile applications will be sending analytics of usage of application and books. There should be a dashboard page to review analytics data with charts and graphs
 
-This Application is Srilann schools, for English subjects in grades 3-10 only,so the books will be Stundet hand book of each year.
+This Application is Srilankan schools, for English subjects in grades 3-10 only,so the books will be Student hand book of each year.
 
 In the digital review we should be able to select an unapproved book, browse it page by page, listen to the audio for each page,and paragraph and read the SSML text. There should be options to approve the book,correct the SSML or reject it with comments, or request re-generation of audio/SSML.
 

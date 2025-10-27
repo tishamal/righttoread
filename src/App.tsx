@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import AddBookModal from './components/AddBookModal';
 import Login from './components/Login';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import DigitalVersionReview from './components/DigitalVersionReview';
+import { booksAPI, analyticsAPI } from './services/api';
 import {
   Box,
   CssBaseline,
@@ -49,7 +50,7 @@ import {
 import { styled, alpha } from '@mui/material/styles';
 
 interface Book {
-  id: number;
+  id: string;
   title: string;
   author: string;
   grade: string;
@@ -58,7 +59,7 @@ interface Book {
   status: string;
   yearOfPublished?: string;
   description?: string;
-  isPublishedByNIE?: string;
+  isPublishedByNIE?: boolean;
 }
 
 interface BookFormData {
@@ -114,7 +115,7 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 
 const sampleBooks = [
   {
-    id: 1,
+    id: '1',
     title: 'English Student Handbook - Grade 3',
     author: 'Ministry of Education Sri Lanka',
     grade: 'Grade 3',
@@ -123,7 +124,7 @@ const sampleBooks = [
     status: 'Available',
   },
   {
-    id: 2,
+    id: '2',
     title: 'English Student Handbook - Grade 4',
     author: 'Ministry of Education Sri Lanka',
     grade: 'Grade 4',
@@ -132,7 +133,7 @@ const sampleBooks = [
     status: 'Available',
   },
   {
-    id: 3,
+    id: '3',
     title: 'English Student Handbook - Grade 5',
     author: 'Ministry of Education Sri Lanka',
     grade: 'Grade 5',
@@ -141,7 +142,7 @@ const sampleBooks = [
     status: 'Available',
   },
   {
-    id: 4,
+    id: '4',
     title: 'English Student Handbook - Grade 6',
     author: 'Ministry of Education Sri Lanka',
     grade: 'Grade 6',
@@ -150,7 +151,7 @@ const sampleBooks = [
     status: 'Limited',
   },
   {
-    id: 5,
+    id: '5',
     title: 'English Student Handbook - Grade 7',
     author: 'Ministry of Education Sri Lanka',
     grade: 'Grade 7',
@@ -159,7 +160,7 @@ const sampleBooks = [
     status: 'Available',
   },
   {
-    id: 6,
+    id: '6',
     title: 'English Student Handbook - Grade 8',
     author: 'Ministry of Education Sri Lanka',
     grade: 'Grade 8',
@@ -168,7 +169,7 @@ const sampleBooks = [
     status: 'Available',
   },
   {
-    id: 7,
+    id: '7',
     title: 'English Student Handbook - Grade 9',
     author: 'Ministry of Education Sri Lanka',
     grade: 'Grade 9',
@@ -177,7 +178,7 @@ const sampleBooks = [
     status: 'Available',
   },
   {
-    id: 8,
+    id: '8',
     title: 'English Student Handbook - Grade 10',
     author: 'Ministry of Education Sri Lanka',
     grade: 'Grade 10',
@@ -203,6 +204,34 @@ function App() {
     { text: 'Settings', icon: <SettingsIcon />, id: 'Settings' },
   ];
 
+  // Fetch books from API when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchBooks();
+    }
+  }, [isAuthenticated]);
+
+  const fetchBooks = async () => {
+    try {
+      const booksData = await booksAPI.getAll();
+      // Convert API books to match frontend Book interface
+      const convertedBooks = booksData.map((book: any) => ({
+        id: book.id,
+        title: book.title,
+        author: book.author,
+        grade: book.grade,
+        subject: book.subject,
+        image: 'https://images.unsplash.com/photo-1506880018603-83d5b814b5a6?w=300&h=400&fit=crop', // Default image
+        status: book.status === 'published' ? 'Available' : book.status === 'approved' ? 'Limited' : 'Draft',
+      }));
+      setBooks(convertedBooks);
+    } catch (error) {
+      console.error('Failed to fetch books:', error);
+      // Fall back to sample data if API fails
+      setBooks(sampleBooks);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Available':
@@ -216,23 +245,55 @@ function App() {
     }
   };
 
-  const handleAddBook = (bookData: BookFormData) => {
-    const newBook: Book = {
-      id: books.length + 1,
-      title: bookData.name,
-      author: bookData.author,
-      grade: bookData.grade,
-      subject: 'Custom', // Default subject for new books
-      image: 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=300&h=400&fit=crop', // Default image
-      status: 'Available', // Default status
-      yearOfPublished: bookData.yearOfPublished,
-      description: bookData.description,
-      isPublishedByNIE: bookData.isPublishedByNIE,
-    };
+  const handleAddBook = async (bookData: BookFormData) => {
+    try {
+      const newBookData = {
+        title: bookData.name,
+        author: bookData.author,
+        grade: bookData.grade,
+        subject: 'Custom',
+        description: bookData.description,
+        published_by_nie: bookData.isPublishedByNIE === 'true',
+        year_published: parseInt(bookData.yearOfPublished),
+        status: 'draft' as const,
+      };
 
-    setBooks(prev => [...prev, newBook]);
-    console.log('New book added:', newBook);
-    console.log('PDF file:', bookData.pdfFile);
+      const apiBook = await booksAPI.create(newBookData);
+      
+      // Convert API book to local Book type
+      const newBook: Book = {
+        id: apiBook.id,
+        title: apiBook.title,
+        author: apiBook.author,
+        grade: apiBook.grade,
+        subject: apiBook.subject,
+        image: 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=300&h=400&fit=crop',
+        status: 'Available',
+        yearOfPublished: bookData.yearOfPublished,
+        description: apiBook.description,
+        isPublishedByNIE: apiBook.published_by_nie,
+      };
+      
+      setBooks(prev => [...prev, newBook]);
+      console.log('New book added:', newBook);
+      console.log('PDF file:', bookData.pdfFile);
+    } catch (error) {
+      console.error('Error adding book:', error);
+      // Fallback: add to local state
+      const newBook: Book = {
+        id: (books.length + 1).toString(),
+        title: bookData.name,
+        author: bookData.author,
+        grade: bookData.grade,
+        subject: 'Custom',
+        image: 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=300&h=400&fit=crop',
+        status: 'Available',
+        yearOfPublished: bookData.yearOfPublished,
+        description: bookData.description,
+        isPublishedByNIE: bookData.isPublishedByNIE === 'true',
+      };
+      setBooks(prev => [...prev, newBook]);
+    }
   };
 
   const handleLogin = (email: string, password: string) => {

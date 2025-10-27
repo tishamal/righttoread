@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -22,6 +22,7 @@ import {
   Tab,
   Alert,
   Divider,
+  CircularProgress,
 } from '@mui/material';
 import {
   PlayArrow as PlayIcon,
@@ -33,6 +34,7 @@ import {
   NavigateNext,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
+import { booksAPI } from '../services/api';
 
 interface Paragraph {
   id: string;
@@ -116,7 +118,7 @@ const sampleDigitalVersions: DigitalVersion[] = [
 ];
 
 const DigitalVersionReview: React.FC = () => {
-  const [versions] = useState<DigitalVersion[]>(sampleDigitalVersions);
+  const [versions, setVersions] = useState<DigitalVersion[]>([]);
   const [selectedVersion, setSelectedVersion] = useState<DigitalVersion | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedParagraph, setSelectedParagraph] = useState<Paragraph | null>(null);
@@ -124,6 +126,49 @@ const DigitalVersionReview: React.FC = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editedSsml, setEditedSsml] = useState('');
   const [tabValue, setTabValue] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDigitalVersions();
+  }, []);
+
+  const fetchDigitalVersions = async () => {
+    try {
+      setLoading(true);
+      const books = await booksAPI.getAll();
+      
+      // Convert books to digital versions format for review
+      const convertedVersions: DigitalVersion[] = books
+        .filter((book: any) => book.status === 'pending' || book.status === 'approved')
+        .map((book: any) => ({
+          id: book.id.toString(),
+          bookTitle: book.title,
+          grade: `Grade ${book.grade}`,
+          status: book.status as 'pending' | 'approved' | 'rejected',
+          lastModified: book.updated_at || new Date().toISOString().split('T')[0],
+          pages: [
+            {
+              pageNumber: 1,
+              paragraphs: [
+                {
+                  id: '1-1-1',
+                  text: book.description || 'Sample text',
+                  ssmlText: `<speak>${book.description || 'Sample text'}</speak>`,
+                  audioUrl: `/audio/${book.id}/default.mp3`,
+                },
+              ],
+            },
+          ],
+        }));
+      
+      setVersions(convertedVersions);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching digital versions:', error);
+      setVersions(sampleDigitalVersions);
+      setLoading(false);
+    }
+  };
 
   const handleVersionSelect = (version: DigitalVersion) => {
     setSelectedVersion(version);
@@ -202,6 +247,11 @@ const DigitalVersionReview: React.FC = () => {
         Digital Version Review
       </Typography>
 
+      {loading ? (
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="600px">
+          <CircularProgress />
+        </Box>
+      ) : (
       <Grid container spacing={3}>
         {/* Books List */}
         <Grid item xs={12} md={4}>
@@ -397,6 +447,7 @@ const DigitalVersionReview: React.FC = () => {
           )}
         </Grid>
       </Grid>
+      )}
 
       {/* SSML Edit Dialog */}
       <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="md" fullWidth>
