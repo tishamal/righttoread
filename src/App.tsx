@@ -115,57 +115,75 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 const sampleBooks = [
   {
     id: 1,
-    title: 'The Great Gatsby',
-    author: 'F. Scott Fitzgerald',
-    grade: 'Grade 11',
+    title: 'English Student Handbook - Grade 3',
+    author: 'Ministry of Education Sri Lanka',
+    grade: 'Grade 3',
     subject: 'English',
     image: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&h=400&fit=crop',
     status: 'Available',
   },
   {
     id: 2,
-    title: 'To Kill a Mockingbird',
-    author: 'Harper Lee',
-    grade: 'Grade 10',
+    title: 'English Student Handbook - Grade 4',
+    author: 'Ministry of Education Sri Lanka',
+    grade: 'Grade 4',
     subject: 'English',
     image: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=300&h=400&fit=crop',
-    status: 'Limited',
+    status: 'Available',
   },
   {
     id: 3,
-    title: '1984',
-    author: 'George Orwell',
-    grade: 'Grade 12',
+    title: 'English Student Handbook - Grade 5',
+    author: 'Ministry of Education Sri Lanka',
+    grade: 'Grade 5',
     subject: 'English',
     image: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop',
     status: 'Available',
   },
   {
     id: 4,
-    title: 'Pride and Prejudice',
-    author: 'Jane Austen',
-    grade: 'Grade 11',
+    title: 'English Student Handbook - Grade 6',
+    author: 'Ministry of Education Sri Lanka',
+    grade: 'Grade 6',
     subject: 'English',
     image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=400&fit=crop',
-    status: 'Out of Stock',
+    status: 'Limited',
   },
   {
     id: 5,
-    title: 'The Catcher in the Rye',
-    author: 'J.D. Salinger',
-    grade: 'Grade 10',
+    title: 'English Student Handbook - Grade 7',
+    author: 'Ministry of Education Sri Lanka',
+    grade: 'Grade 7',
     subject: 'English',
     image: 'https://images.unsplash.com/photo-1550399105-c4db5fb85c18?w=300&h=400&fit=crop',
     status: 'Available',
   },
   {
     id: 6,
-    title: 'Lord of the Flies',
-    author: 'William Golding',
-    grade: 'Grade 9',
+    title: 'English Student Handbook - Grade 8',
+    author: 'Ministry of Education Sri Lanka',
+    grade: 'Grade 8',
     subject: 'English',
     image: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?w=300&h=400&fit=crop',
     status: 'Available',
+  },
+  {
+    id: 7,
+    title: 'English Student Handbook - Grade 9',
+    author: 'Ministry of Education Sri Lanka',
+    grade: 'Grade 9',
+    subject: 'English',
+    image: 'https://images.unsplash.com/photo-1507842217343-583f7270bfba?w=300&h=400&fit=crop',
+    status: 'Available',
+  },
+  {
+    id: 8,
+    title: 'English Student Handbook - Grade 10',
+    author: 'Ministry of Education Sri Lanka',
+    grade: 'Grade 10',
+    subject: 'English',
+    image: 'https://images.unsplash.com/photo-1506880018603-83d5b814b5a6?w=300&h=400&fit=crop',
+    status: 'Limited',
   },
 ];
 
@@ -271,17 +289,21 @@ function App() {
                   size="small"
                 >
                   <MenuItem value="All Grades">All Grades</MenuItem>
+                  <MenuItem value="Grade 3">Grade 3</MenuItem>
+                  <MenuItem value="Grade 4">Grade 4</MenuItem>
+                  <MenuItem value="Grade 5">Grade 5</MenuItem>
+                  <MenuItem value="Grade 6">Grade 6</MenuItem>
+                  <MenuItem value="Grade 7">Grade 7</MenuItem>
+                  <MenuItem value="Grade 8">Grade 8</MenuItem>
                   <MenuItem value="Grade 9">Grade 9</MenuItem>
                   <MenuItem value="Grade 10">Grade 10</MenuItem>
-                  <MenuItem value="Grade 11">Grade 11</MenuItem>
-                  <MenuItem value="Grade 12">Grade 12</MenuItem>
                 </Select>
               </FormControl>
             </Box>
 
             {/* Statistics Cards */}
             <Grid container spacing={3} sx={{ mb: 4 }}>
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid item xs={12} sm={6} md={6}>
                 <Paper sx={{ p: 3, textAlign: 'center', bgcolor: '#e3f2fd' }}>
                   <Typography variant="h4" fontWeight="bold" color="primary">
                     {totalBooks}
@@ -291,37 +313,44 @@ function App() {
                   </Typography>
                 </Paper>
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Paper sx={{ p: 3, textAlign: 'center', bgcolor: '#e8f5e8' }}>
-                  <Typography variant="h4" fontWeight="bold" color="success.main">
-                    {availableBooks}
+              <Grid item xs={12} sm={6} md={6}>
+                <Paper sx={{ p: 3, textAlign: 'center', bgcolor: '#f3e5f5' }}>
+                  <Typography variant="h4" fontWeight="bold" color="secondary.main">
+                    24
                   </Typography>
                   <Typography variant="body2" color="textSecondary">
-                    Available
-                  </Typography>
-                </Paper>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Paper sx={{ p: 3, textAlign: 'center', bgcolor: '#fff3e0' }}>
-                  <Typography variant="h4" fontWeight="bold" color="warning.main">
-                    {limitedBooks}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Limited Stock
-                  </Typography>
-                </Paper>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Paper sx={{ p: 3, textAlign: 'center', bgcolor: '#ffebee' }}>
-                  <Typography variant="h4" fontWeight="bold" color="error.main">
-                    {outOfStockBooks}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Out of Stock
+                    Schools Using
                   </Typography>
                 </Paper>
               </Grid>
             </Grid>
+
+            {/* Schools Section */}
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h5" fontWeight="bold" gutterBottom>
+                Schools Using Right to Read
+              </Typography>
+              <Grid container spacing={2}>
+                {['Colombo High School', 'Royal College Colombo', 'Ananda College', 
+                  'St. Thomas\' College', 'Wesley College', 'Nalanda College'].map((school, index) => (
+                  <Grid item xs={12} sm={6} md={4} key={index}>
+                    <Paper sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Avatar sx={{ width: 48, height: 48, bgcolor: 'primary.main' }}>
+                        {school.charAt(0)}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="body1" fontWeight="medium">
+                          {school}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          Active since 2024
+                        </Typography>
+                      </Box>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
 
             {/* Actions Bar */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
