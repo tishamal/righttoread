@@ -32,11 +32,8 @@ interface AddBookModalProps {
 interface BookFormData {
   name: string;
   grade: string;
-  isPublishedByNIE: string;
-  author: string;
-  yearOfPublished: string;
-  description: string;
   pdfFile: File | null;
+  startingPageNumber: number;
 }
 
 const UploadBox = styled(Paper)(({ theme }) => ({
@@ -65,11 +62,8 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ open, onClose, onSave }) =>
   const [formData, setFormData] = useState<BookFormData>({
     name: '',
     grade: '',
-    isPublishedByNIE: '',
-    author: '',
-    yearOfPublished: '',
-    description: '',
     pdfFile: null,
+    startingPageNumber: 1,
   });
 
   const [dragOver, setDragOver] = useState(false);
@@ -126,8 +120,8 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ open, onClose, onSave }) =>
 
   const handleSave = () => {
     // Basic validation
-    if (!formData.name || !formData.grade || !formData.author) {
-      alert('Please fill in all required fields.');
+    if (!formData.name || !formData.grade || !formData.pdfFile) {
+      alert('Please fill in all required fields and upload a PDF file.');
       return;
     }
 
@@ -140,11 +134,8 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ open, onClose, onSave }) =>
     setFormData({
       name: '',
       grade: '',
-      isPublishedByNIE: '',
-      author: '',
-      yearOfPublished: '',
-      description: '',
       pdfFile: null,
+      startingPageNumber: 1,
     });
     setDragOver(false);
     onClose();
@@ -183,18 +174,18 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ open, onClose, onSave }) =>
         <Stack spacing={3}>
           {/* Detail Section */}
           <Typography variant="h6" fontWeight="bold" color="text.primary">
-            Detail
+            Book Details
           </Typography>
 
           {/* Name of the Book */}
           <Box>
             <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
-              Name of the Book
+              Name of the Book *
             </Typography>
             <TextField
               fullWidth
               variant="outlined"
-              placeholder="Create a Social Media Marketing Plan"
+              placeholder="Enter book name"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
               sx={{ backgroundColor: '#f8f9fa' }}
@@ -204,7 +195,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ open, onClose, onSave }) =>
           {/* Grade */}
           <Box>
             <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
-              Grade
+              Grade *
             </Typography>
             <FormControl fullWidth sx={{ backgroundColor: '#f8f9fa' }}>
               <Select
@@ -219,6 +210,12 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ open, onClose, onSave }) =>
                   return selected;
                 }}
               >
+                <MenuItem value="Grade 3">Grade 3</MenuItem>
+                <MenuItem value="Grade 4">Grade 4</MenuItem>
+                <MenuItem value="Grade 5">Grade 5</MenuItem>
+                <MenuItem value="Grade 6">Grade 6</MenuItem>
+                <MenuItem value="Grade 7">Grade 7</MenuItem>
+                <MenuItem value="Grade 8">Grade 8</MenuItem>
                 <MenuItem value="Grade 9">Grade 9</MenuItem>
                 <MenuItem value="Grade 10">Grade 10</MenuItem>
                 <MenuItem value="Grade 11">Grade 11</MenuItem>
@@ -227,81 +224,31 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ open, onClose, onSave }) =>
             </FormControl>
           </Box>
 
-          {/* Is the Book Published by NIE? */}
+          {/* Starting Page Number */}
           <Box>
             <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
-              Is the Book Published by NIE?
-            </Typography>
-            <FormControl fullWidth sx={{ backgroundColor: '#f8f9fa' }}>
-              <Select
-                value={formData.isPublishedByNIE}
-                name="isPublishedByNIE"
-                onChange={handleSelectChange}
-                displayEmpty
-                renderValue={(selected) => {
-                  if (!selected) {
-                    return <em style={{ color: '#999' }}>Choose Yes/No</em>;
-                  }
-                  return selected;
-                }}
-              >
-                <MenuItem value="Yes">Yes</MenuItem>
-                <MenuItem value="No">No</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-
-          {/* Author */}
-          <Box>
-            <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
-              Author
+              Starting Page Number
             </Typography>
             <TextField
               fullWidth
+              type="number"
               variant="outlined"
-              placeholder="Write the Author of the Book"
-              value={formData.author}
-              onChange={(e) => handleInputChange('author', e.target.value)}
+              placeholder="Enter starting page number (default: 1)"
+              value={formData.startingPageNumber}
+              onChange={(e) => {
+                const value = parseInt(e.target.value) || 1;
+                setFormData(prev => ({ ...prev, startingPageNumber: Math.max(1, value) }));
+              }}
+              inputProps={{ min: 1 }}
               sx={{ backgroundColor: '#f8f9fa' }}
-            />
-          </Box>
-
-          {/* Year of Published */}
-          <Box>
-            <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
-              Year of Published
-            </Typography>
-            <TextField
-              fullWidth
-              variant="outlined"
-              placeholder="Enter the Year here"
-              value={formData.yearOfPublished}
-              onChange={(e) => handleInputChange('yearOfPublished', e.target.value)}
-              sx={{ backgroundColor: '#f8f9fa' }}
-            />
-          </Box>
-
-          {/* Description */}
-          <Box>
-            <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
-              Description
-            </Typography>
-            <TextField
-              fullWidth
-              multiline
-              rows={4}
-              variant="outlined"
-              placeholder="Develop a comprehensive social media marketing plan for a small business."
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              sx={{ backgroundColor: '#f8f9fa' }}
+              helperText="The page number from which the book processing should start"
             />
           </Box>
 
           {/* Upload Section */}
           <Box>
             <Typography variant="h6" fontWeight="bold" color="text.primary" sx={{ mb: 2 }}>
-              Upload the Book
+              Upload the Book PDF *
             </Typography>
             
             <UploadBox

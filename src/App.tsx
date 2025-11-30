@@ -4,7 +4,7 @@ import AddBookModal from './components/AddBookModal';
 import Login from './components/Login';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import DigitalVersionReview from './components/DigitalVersionReview';
-import { booksAPI, analyticsAPI } from './services/api';
+import { booksAPI, ttsAPI } from './services/api';
 import {
   Box,
   CssBaseline,
@@ -34,6 +34,9 @@ import {
   MenuItem,
   Stack,
   Tooltip,
+  CircularProgress,
+  Alert,
+  Snackbar,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -65,11 +68,8 @@ interface Book {
 interface BookFormData {
   name: string;
   grade: string;
-  isPublishedByNIE: string;
-  author: string;
-  yearOfPublished: string;
-  description: string;
   pdfFile: File | null;
+  startingPageNumber: number;
 }
 
 const drawerWidth = 240;
@@ -195,6 +195,16 @@ function App() {
   const [books, setBooks] = useState<Book[]>(sampleBooks);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<string>('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info',
+  });
 
   const navigationItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, id: 'Dashboard' },
@@ -247,52 +257,62 @@ function App() {
 
   const handleAddBook = async (bookData: BookFormData) => {
     try {
-      const newBookData = {
-        title: bookData.name,
-        author: bookData.author,
-        grade: bookData.grade,
-        subject: 'Custom',
-        description: bookData.description,
-        published_by_nie: bookData.isPublishedByNIE === 'true',
-        year_published: parseInt(bookData.yearOfPublished),
-        status: 'draft' as const,
-      };
+      setUploading(true);
+      setUploadStatus({
+        open: true,
+        message: 'Processing book upload and generating TTS...',
+        severity: 'info',
+      });
 
-      const apiBook = await booksAPI.create(newBookData);
-      
-      // Convert API book to local Book type
-      const newBook: Book = {
-        id: apiBook.id,
-        title: apiBook.title,
-        author: apiBook.author,
-        grade: apiBook.grade,
-        subject: apiBook.subject,
-        image: 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=300&h=400&fit=crop',
-        status: 'Available',
-        yearOfPublished: bookData.yearOfPublished,
-        description: apiBook.description,
-        isPublishedByNIE: apiBook.published_by_nie,
-      };
-      
-      setBooks(prev => [...prev, newBook]);
-      console.log('New book added:', newBook);
-      console.log('PDF file:', bookData.pdfFile);
+      // Upload the PDF to TTS service
+      if (bookData.pdfFile) {
+        try {
+          const ttsResult = await ttsAPI.uploadBook(bookData.pdfFile, bookData.startingPageNumber);
+          console.log('TTS processing result:', ttsResult);
+          
+          setUploadStatus({
+            open: true,
+            message: `TTS processing completed! ${ttsResult.total_pages_processed || 0} pages processed.`,
+            severity: 'success',
+          });
+
+          // Create a local book entry for display
+          const newBook: Book = {
+            id: (books.length + 1).toString(),
+            title: bookData.name,
+            author: 'Unknown',
+            grade: bookData.grade,
+            subject: 'Custom',
+            image: 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=300&h=400&fit=crop',
+            status: 'Available',
+          };
+          
+          setBooks(prev => [...prev, newBook]);
+          console.log('New book added:', newBook);
+        } catch (ttsError) {
+          console.error('TTS processing failed:', ttsError);
+          setUploadStatus({
+            open: true,
+            message: 'TTS processing failed. Please check the PDF file and try again.',
+            severity: 'error',
+          });
+        }
+      } else {
+        setUploadStatus({
+          open: true,
+          message: 'Please upload a PDF file.',
+          severity: 'error',
+        });
+      }
     } catch (error) {
       console.error('Error adding book:', error);
-      // Fallback: add to local state
-      const newBook: Book = {
-        id: (books.length + 1).toString(),
-        title: bookData.name,
-        author: bookData.author,
-        grade: bookData.grade,
-        subject: 'Custom',
-        image: 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=300&h=400&fit=crop',
-        status: 'Available',
-        yearOfPublished: bookData.yearOfPublished,
-        description: bookData.description,
-        isPublishedByNIE: bookData.isPublishedByNIE === 'true',
-      };
-      setBooks(prev => [...prev, newBook]);
+      setUploadStatus({
+        open: true,
+        message: 'Failed to process book. Please try again.',
+        severity: 'error',
+      });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -591,6 +611,49 @@ function App() {
           onClose={() => setAddBookModalOpen(false)}
           onSave={handleAddBook}
         />
+
+        {/* Upload Status Snackbar */}
+        <Snackbar
+          open={uploadStatus.open}
+          autoHideDuration={6000}
+          onClose={() => setUploadStatus(prev => ({ ...prev, open: false }))}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        >
+          <Alert
+            onClose={() => setUploadStatus(prev => ({ ...prev, open: false }))}
+            severity={uploadStatus.severity}
+            sx={{ width: '100%' }}
+          >
+            {uploadStatus.message}
+          </Alert>
+        </Snackbar>
+
+        {/* Loading Overlay */}
+        {uploading && (
+          <Box
+            sx={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              bgcolor: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+            }}
+          >
+            <CircularProgress size={60} sx={{ color: 'white' }} />
+            <Typography variant="h6" sx={{ color: 'white', mt: 2 }}>
+              Processing book upload...
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'white', mt: 1 }}>
+              This may take a few minutes depending on the book size
+            </Typography>
+          </Box>
+        )}
       </Box>
     </Box>
   );
