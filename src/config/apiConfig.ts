@@ -4,8 +4,8 @@
 // Backend API base URL
 export const BACKEND_API_URL = process.env.REACT_APP_BACKEND_API_URL || 'http://localhost:8080/api';
 
-// TTS Service base URL (Python FastAPI service)
-export const TTS_SERVICE_URL = process.env.REACT_APP_TTS_SERVICE_URL || 'http://localhost:8080/api';
+// TTS Service base URL (Python FastAPI service) - this includes /api for the endpoints in api.ts
+export const TTS_SERVICE_URL = process.env.REACT_APP_BACKEND_API_URL || 'http://localhost:8080/api';
 
 // API Endpoints
 export const API_ENDPOINTS = {
@@ -35,6 +35,10 @@ export const API_ENDPOINTS = {
   tts: {
     uploadBook: `${TTS_SERVICE_URL}/tts_service`,
     uploadWithDownload: `${TTS_SERVICE_URL}/tts_service_download`,
+    booksForReview: `${TTS_SERVICE_URL}/books/pending_review`,
+    bookDetails: (bookId: string | number) => `${TTS_SERVICE_URL}/books/${bookId}/details`,
+    presignedUrls: (bookId: string | number) => `${TTS_SERVICE_URL}/books/${bookId}/presigned_urls`,
+    reviewStatus: (bookId: string | number) => `${TTS_SERVICE_URL}/books/${bookId}/review_status`,
   },
 };
 

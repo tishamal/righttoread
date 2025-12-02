@@ -4,483 +4,794 @@ import {
   Paper,
   Typography,
   Grid,
-  Card,
-  CardContent,
   IconButton,
   Button,
-  Stack,
   TextField,
-  List,
-  ListItem,
-  ListItemButton,
-  Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Tabs,
   Tab,
   Alert,
   Divider,
   CircularProgress,
+  Snackbar,
+  Chip,
+  ToggleButtonGroup,
+  ToggleButton,
 } from '@mui/material';
 import {
-  PlayArrow as PlayIcon,
-  Pause as PauseIcon,
-  Check as ApproveIcon,
-  Close as RejectIcon,
-  Edit as EditIcon,
+  PlayArrow,
+  Pause,
   NavigateBefore,
   NavigateNext,
-  Refresh as RefreshIcon,
+  CheckCircle,
+  Cancel,
+  Edit,
+  ChevronLeft,
+  ChevronRight,
 } from '@mui/icons-material';
-import { booksAPI } from '../services/api';
+import { ttsAPI } from '../services/api';
+import BookListPanel from './BookListPanel';
 
-interface Paragraph {
+interface Block {
   id: string;
   text: string;
-  ssmlText: string;
-  audioUrl: string;
+  ssml?: string;
+  voiceId?: string;
+  blockNumber?: number;
+  normalAudioUrl?: string;
+  slowAudioUrl?: string;
+  speechMarksUrl?: string;
 }
 
-interface Page {
-  pageNumber: number;
-  paragraphs: Paragraph[];
+interface Book {
+  id: number;
+  book_name: string;
+  grade: number;
+  total_pages: number | null;
+  processing_status: string;
+  s3_base_path: string | null;
+  dictionary_s3_key: string | null;
+  created_at: number;
+  updated_at: number;
 }
 
-interface DigitalVersion {
-  id: string;
-  bookTitle: string;
-  grade: string;
-  status: 'pending' | 'approved' | 'rejected';
-  lastModified: string;
-  pages: Page[];
+interface BookPage {
+  page_number: number;
+  status: string;
+  image_s3_key: string | null;
+  annotated_image_s3_key: string | null;
+  blocks_s3_key: string | null;
+  slow_blocks_s3_key: string | null;
+  metadata_s3_key: string | null;
+  audio_files: Array<{
+    block_id: string;
+    audio_type: string;
+    audio_s3_key: string;
+    speech_marks_s3_key: string | null;
+  }>;
 }
 
-const sampleDigitalVersions: DigitalVersion[] = [
-  {
-    id: '1',
-    bookTitle: 'The Great Gatsby',
-    grade: 'Grade 11',
-    status: 'pending',
-    lastModified: '2025-10-27',
-    pages: [
-      {
-        pageNumber: 1,
-        paragraphs: [
-          {
-            id: '1-1-1',
-            text: "In my younger and more vulnerable years my father gave me some advice that I've been turning over in my mind ever since.",
-            ssmlText: "<speak>In my younger and more vulnerable years my father gave me some advice that I've been turning over in my mind ever since.</speak>",
-            audioUrl: '/audio/gatsby-1-1-1.mp3',
-          },
-          {
-            id: '1-1-2',
-            text: "Whenever you feel like criticizing any one, he told me, just remember that all the people in this world haven't had the advantages that you've had.",
-            ssmlText: "<speak>Whenever you feel like criticizing any one, he told me, just remember that all the people in this world haven't had the advantages that you've had.</speak>",
-            audioUrl: '/audio/gatsby-1-1-2.mp3',
-          },
-        ],
-      },
-      {
-        pageNumber: 2,
-        paragraphs: [
-          {
-            id: '1-2-1',
-            text: "He didn't say any more, but we've always been unusually communicative in a reserved way, and I understood that he meant a great deal more than that.",
-            ssmlText: "<speak>He didn't say any more, but we've always been unusually communicative in a reserved way, and I understood that he meant a great deal more than that.</speak>",
-            audioUrl: '/audio/gatsby-1-2-1.mp3',
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: '2',
-    bookTitle: 'To Kill a Mockingbird',
-    grade: 'Grade 10',
-    status: 'approved',
-    lastModified: '2025-10-26',
-    pages: [
-      {
-        pageNumber: 1,
-        paragraphs: [
-          {
-            id: '2-1-1',
-            text: 'When he was nearly thirteen, my brother Jem got his arm badly broken at the elbow.',
-            ssmlText: '<speak>When he was nearly thirteen, my brother Jem got his arm badly broken at the elbow.</speak>',
-            audioUrl: '/audio/mockingbird-1-1-1.mp3',
-          },
-        ],
-      },
-    ],
-  },
-];
+interface BookDetails {
+  book: Book;
+  pages: BookPage[];
+}
 
 const DigitalVersionReview: React.FC = () => {
-  const [versions, setVersions] = useState<DigitalVersion[]>([]);
-  const [selectedVersion, setSelectedVersion] = useState<DigitalVersion | null>(null);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [selectedParagraph, setSelectedParagraph] = useState<Paragraph | null>(null);
-  const [isPlaying, setIsPlaying] = useState<string | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editedSsml, setEditedSsml] = useState('');
+  const [books, setBooks] = useState<Book[]>([]);
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [bookDetails, setBookDetails] = useState<BookDetails | null>(null);
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const [currentPageData, setCurrentPageData] = useState<{
+    imageUrl: string | null;
+    blocks: Block[];
+    audioUrls: Record<string, string>;
+  }>({ imageUrl: null, blocks: [], audioUrls: {} });
+  const [playingBlockId, setPlayingBlockId] = useState<string | null>(null);
+  const [audioSpeed, setAudioSpeed] = useState<'normal' | 'slow'>('normal');
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingPage, setLoadingPage] = useState(false);
+  const [reviewerNotes, setReviewerNotes] = useState('');
+  const [statusFilter, setStatusFilter] = useState('completed');
+  const [gradeFilter, setGradeFilter] = useState('all');
+  const [editedSsml, setEditedSsml] = useState<Record<string, string>>({});
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'info';
+  }>({ open: false, message: '', severity: 'info' });
+  const [bookListCollapsed, setBookListCollapsed] = useState(false);
 
   useEffect(() => {
-    fetchDigitalVersions();
-  }, []);
+    fetchBooks();
+  }, [statusFilter, gradeFilter]);
 
-  const fetchDigitalVersions = async () => {
+  useEffect(() => {
+    if (selectedBook) {
+      fetchBookDetails(selectedBook.id);
+    }
+  }, [selectedBook]);
+
+  useEffect(() => {
+    if (bookDetails && bookDetails.pages.length > 0) {
+      loadPageData(currentPageIndex);
+    }
+  }, [bookDetails, currentPageIndex]);
+
+  const fetchBooks = async () => {
     try {
       setLoading(true);
-      const books = await booksAPI.getAll();
-      
-      // Convert books to digital versions format for review
-      const convertedVersions: DigitalVersion[] = books
-        .filter((book: any) => book.status === 'pending' || book.status === 'approved')
-        .map((book: any) => ({
-          id: book.id.toString(),
-          bookTitle: book.title,
-          grade: `Grade ${book.grade}`,
-          status: book.status as 'pending' | 'approved' | 'rejected',
-          lastModified: book.updated_at || new Date().toISOString().split('T')[0],
-          pages: [
-            {
-              pageNumber: 1,
-              paragraphs: [
-                {
-                  id: '1-1-1',
-                  text: book.description || 'Sample text',
-                  ssmlText: `<speak>${book.description || 'Sample text'}</speak>`,
-                  audioUrl: `/audio/${book.id}/default.mp3`,
-                },
-              ],
-            },
-          ],
-        }));
-      
-      setVersions(convertedVersions);
-      setLoading(false);
+      const params: any = {};
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (gradeFilter !== 'all') params.grade = parseInt(gradeFilter);
+
+      const booksData = await ttsAPI.getBooksForReview(params);
+      setBooks(booksData);
     } catch (error) {
-      console.error('Error fetching digital versions:', error);
-      setVersions(sampleDigitalVersions);
+      console.error('Error fetching books:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to fetch books',
+        severity: 'error',
+      });
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleVersionSelect = (version: DigitalVersion) => {
-    setSelectedVersion(version);
-    setCurrentPage(0);
-    setSelectedParagraph(null);
+  const fetchBookDetails = async (bookId: number) => {
+    try {
+      setLoadingPage(true);
+      const details = await ttsAPI.getBookDetails(bookId);
+      setBookDetails(details);
+      setCurrentPageIndex(0);
+    } catch (error) {
+      console.error('Error fetching book details:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to fetch book details',
+        severity: 'error',
+      });
+    } finally {
+      setLoadingPage(false);
+    }
+  };
+
+  const loadPageData = async (pageIndex: number) => {
+    if (!bookDetails || pageIndex >= bookDetails.pages.length) return;
+
+    try {
+      setLoadingPage(true);
+      const page = bookDetails.pages[pageIndex];
+      
+      // Collect all S3 keys we need
+      const s3Keys: string[] = [];
+      if (page.image_s3_key) s3Keys.push(page.image_s3_key);
+      if (page.blocks_s3_key) s3Keys.push(page.blocks_s3_key);
+      if (page.slow_blocks_s3_key) s3Keys.push(page.slow_blocks_s3_key);
+      
+      // Add audio file keys
+      page.audio_files.forEach(audio => {
+        if (audio.audio_s3_key) s3Keys.push(audio.audio_s3_key);
+        if (audio.speech_marks_s3_key) s3Keys.push(audio.speech_marks_s3_key);
+      });
+
+      // Get presigned URLs
+      const urls = await ttsAPI.getPresignedUrls(selectedBook!.id, s3Keys);
+      console.log('Presigned URLs received:', urls);
+      console.log('Image S3 key:', page.image_s3_key);
+      console.log('Image URL:', urls[page.image_s3_key || '']);
+      
+      // Fetch blocks.json if available - prefer slow_blocks for slow reading, fallback to regular blocks
+      let blocks: Block[] = [];
+      const blocksKey = page.slow_blocks_s3_key || page.blocks_s3_key;
+      
+      if (blocksKey && urls[blocksKey]) {
+        try {
+          console.log('Fetching blocks from:', blocksKey);
+          // Use proxy endpoint to avoid CORS issues
+          const proxyUrl = `${process.env.REACT_APP_TTS_SERVICE_URL}/api/s3-proxy?s3_key=${encodeURIComponent(blocksKey)}`;
+          console.log('Using proxy URL:', proxyUrl);
+          
+          const response = await fetch(proxyUrl);
+          const blocksData = await response.json();
+          console.log('Blocks data received:', blocksData);
+          
+          // Handle different JSON structures
+          let blocksArray: any[] = [];
+          
+          if (Array.isArray(blocksData)) {
+            // Array format: [block1, block2, ...]
+            blocksArray = blocksData;
+          } else if (blocksData.tts_blocks && Array.isArray(blocksData.tts_blocks)) {
+            // Nested array format: { tts_blocks: [block1, block2, ...] }
+            blocksArray = blocksData.tts_blocks;
+          } else if (typeof blocksData === 'object') {
+            // Object with numeric keys: { "0": block1, "1": block2, ... }
+            blocksArray = Object.keys(blocksData)
+              .sort((a, b) => parseInt(a) - parseInt(b))
+              .map(key => ({ ...blocksData[key], blockNumber: key }));
+          }
+          
+          // Convert blocks data to our format
+          blocks = blocksArray.map((block: any, index: number) => {
+            const blockNumber = block.blockNumber || index.toString();
+            return {
+              id: `${page.page_number}_${blockNumber}`,
+              text: block.text || block.content || '',
+              ssml: block.ssml || block.text || '',
+              voiceId: block.voice_id || 'Ruth',
+              blockNumber: parseInt(blockNumber),
+            };
+          });
+          
+          console.log('Parsed blocks:', blocks);
+        } catch (err) {
+          console.error('Error fetching blocks:', err);
+        }
+      }
+
+      // Map audio URLs
+      const audioUrls: Record<string, string> = {};
+      page.audio_files.forEach(audio => {
+        const key = `${audio.block_id}_${audio.audio_type}`;
+        if (urls[audio.audio_s3_key]) {
+          audioUrls[key] = urls[audio.audio_s3_key];
+        }
+      });
+
+      setCurrentPageData({
+        imageUrl: page.image_s3_key && urls[page.image_s3_key] ? urls[page.image_s3_key] : null,
+        blocks,
+        audioUrls,
+      });
+      console.log('Current page data set:', {
+        imageUrl: page.image_s3_key && urls[page.image_s3_key] ? urls[page.image_s3_key] : null,
+        blocksCount: blocks.length,
+        audioUrlsCount: Object.keys(audioUrls).length,
+      });
+
+      // Initialize SSML edit state
+      const ssmlState: Record<string, string> = {};
+      blocks.forEach(block => {
+        ssmlState[block.id] = block.ssml || block.text;
+      });
+      setEditedSsml(ssmlState);
+    } catch (error) {
+      console.error('Error loading page data:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to load page data',
+        severity: 'error',
+      });
+    } finally {
+      setLoadingPage(false);
+    }
+  };
+
+  const handleSelectBook = (book: Book) => {
+    setSelectedBook(book);
     setTabValue(0);
+    setPlayingBlockId(null);
   };
 
   const handleNextPage = () => {
-    if (selectedVersion && currentPage < selectedVersion.pages.length - 1) {
-      setCurrentPage(currentPage + 1);
-      setSelectedParagraph(null);
+    if (bookDetails && currentPageIndex < bookDetails.pages.length - 1) {
+      setCurrentPageIndex(currentPageIndex + 1);
+      setPlayingBlockId(null);
     }
   };
 
   const handlePrevPage = () => {
-    if (currentPage > 0) {
-      setCurrentPage(currentPage - 1);
-      setSelectedParagraph(null);
+    if (currentPageIndex > 0) {
+      setCurrentPageIndex(currentPageIndex - 1);
+      setPlayingBlockId(null);
     }
   };
 
-  const handleParagraphSelect = (paragraph: Paragraph) => {
-    setSelectedParagraph(paragraph);
-  };
-
-  const handlePlayParagraph = (id: string) => {
-    if (isPlaying === id) {
-      setIsPlaying(null);
+  const handlePlayBlock = (blockId: string) => {
+    if (playingBlockId === blockId) {
+      setPlayingBlockId(null);
     } else {
-      setIsPlaying(id);
+      setPlayingBlockId(blockId);
+      
+      // Play audio
+      const audioKey = `${blockId}_${audioSpeed}`;
+      const audioUrl = currentPageData.audioUrls[audioKey];
+      
+      if (audioUrl) {
+        const audio = new Audio(audioUrl);
+        audio.play().catch(err => {
+          console.error('Error playing audio:', err);
+          setSnackbar({
+            open: true,
+            message: 'Failed to play audio',
+            severity: 'error',
+          });
+        });
+        
+        audio.onended = () => setPlayingBlockId(null);
+      }
     }
   };
 
-  const handleEditParagraph = (paragraph: Paragraph) => {
-    setSelectedParagraph(paragraph);
-    setEditedSsml(paragraph.ssmlText);
-    setEditDialogOpen(true);
+  const handleSsmlChange = (blockId: string, newSsml: string) => {
+    setEditedSsml(prev => ({
+      ...prev,
+      [blockId]: newSsml,
+    }));
   };
 
-  const handleSaveEdit = () => {
-    if (selectedParagraph) {
-      console.log('Saving edited SSML:', editedSsml);
-      setEditDialogOpen(false);
+  const handleApproveBook = async () => {
+    if (!selectedBook) return;
+
+    try {
+      await ttsAPI.updateReviewStatus(selectedBook.id, 'approved', reviewerNotes);
+      setSnackbar({
+        open: true,
+        message: 'Book approved successfully',
+        severity: 'success',
+      });
+      
+      // Update local state
+      setBooks(prev => prev.map(b => 
+        b.id === selectedBook.id 
+          ? { ...b, processing_status: 'approved' }
+          : b
+      ));
+      
+      // Clear selection
+      setSelectedBook(null);
+      setBookDetails(null);
+      setReviewerNotes('');
+    } catch (error) {
+      console.error('Error approving book:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to approve book',
+        severity: 'error',
+      });
     }
   };
 
-  const handleApproveBook = (id: string) => {
-    console.log('Approving book:', id);
+  const handleRejectBook = async () => {
+    if (!selectedBook) return;
+
+    try {
+      await ttsAPI.updateReviewStatus(selectedBook.id, 'rejected', reviewerNotes);
+      setSnackbar({
+        open: true,
+        message: 'Book rejected',
+        severity: 'success',
+      });
+      
+      // Update local state
+      setBooks(prev => prev.map(b => 
+        b.id === selectedBook.id 
+          ? { ...b, processing_status: 'rejected' }
+          : b
+      ));
+      
+      // Clear selection
+      setSelectedBook(null);
+      setBookDetails(null);
+      setReviewerNotes('');
+    } catch (error) {
+      console.error('Error rejecting book:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to reject book',
+        severity: 'error',
+      });
+    }
   };
 
-  const handleRejectBook = (id: string) => {
-    console.log('Rejecting book:', id);
-  };
+  const handleRequestRevision = async () => {
+    if (!selectedBook) return;
 
-  const handleRequestRegeneration = (id: string) => {
-    console.log('Requesting regeneration for:', id);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'warning';
-      case 'approved':
-        return 'success';
-      case 'rejected':
-        return 'error';
-      default:
-        return 'default';
+    try {
+      await ttsAPI.updateReviewStatus(selectedBook.id, 'needs_revision', reviewerNotes);
+      setSnackbar({
+        open: true,
+        message: 'Revision requested',
+        severity: 'success',
+      });
+      
+      // Update local state
+      setBooks(prev => prev.map(b => 
+        b.id === selectedBook.id 
+          ? { ...b, processing_status: 'needs_revision' }
+          : b
+      ));
+      
+      setReviewerNotes('');
+    } catch (error) {
+      console.error('Error requesting revision:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to request revision',
+        severity: 'error',
+      });
     }
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" fontWeight="bold" gutterBottom>
-        Digital Version Review
-      </Typography>
+    <Box sx={{ height: '100vh', display: 'flex', overflow: 'hidden' }}>
+      {/* Left Sidebar - Book List (Collapsible) */}
+      <Box
+        sx={{
+          width: bookListCollapsed ? 0 : 320,
+          transition: 'width 0.3s ease',
+          overflow: 'hidden',
+          borderRight: bookListCollapsed ? 0 : 1,
+          borderColor: 'divider',
+        }}
+      >
+        <BookListPanel
+          books={books}
+          selectedBookId={selectedBook?.id || null}
+          onSelectBook={handleSelectBook}
+          loading={loading}
+          statusFilter={statusFilter}
+          gradeFilter={gradeFilter}
+          onStatusFilterChange={setStatusFilter}
+          onGradeFilterChange={setGradeFilter}
+        />
+      </Box>
 
-      {loading ? (
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="600px">
-          <CircularProgress />
+      {/* Collapse/Expand Button */}
+      <Box
+        sx={{
+          width: 40,
+          bgcolor: 'background.paper',
+          borderRight: 1,
+          borderColor: 'divider',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          '&:hover': {
+            bgcolor: 'action.hover',
+          },
+        }}
+        onClick={() => setBookListCollapsed(!bookListCollapsed)}
+      >
+        <IconButton size="small">
+          {bookListCollapsed ? <ChevronRight /> : <ChevronLeft />}
+        </IconButton>
+      </Box>
+
+      {/* Main Content Area */}
+      {!selectedBook ? (
+        <Box
+          sx={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: 'background.default',
+          }}
+        >
+          <Typography variant="h6" color="text.secondary">
+            Select a book to review
+          </Typography>
         </Box>
       ) : (
-      <Grid container spacing={3}>
-        {/* Books List */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Books to Review
-            </Typography>
-            <List sx={{ maxHeight: '600px', overflow: 'auto' }}>
-              {versions.map((version) => (
-                <ListItemButton
-                  key={version.id}
-                  selected={selectedVersion?.id === version.id}
-                  onClick={() => handleVersionSelect(version)}
-                  sx={{
-                    mb: 1,
-                    borderRadius: 1,
-                    bgcolor: selectedVersion?.id === version.id ? 'primary.light' : 'background.paper',
-                  }}
-                >
-                  <Box sx={{ width: '100%' }}>
-                    <Typography variant="subtitle2" fontWeight="bold">
-                      {version.bookTitle}
-                    </Typography>
-                    <Typography variant="caption" color="textSecondary">
-                      {version.grade}
-                    </Typography>
-                    <Chip
-                      label={version.status}
-                      size="small"
-                      color={getStatusColor(version.status) as any}
-                      sx={{ mt: 1 }}
-                    />
-                  </Box>
-                </ListItemButton>
-              ))}
-            </List>
-          </Paper>
-        </Grid>
-
-        {/* Content Review Area */}
-        <Grid item xs={12} md={8}>
-          {selectedVersion ? (
-            <Paper sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Box>
-                  <Typography variant="h5" fontWeight="bold">
-                    {selectedVersion.bookTitle}
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Header */}
+          <Box
+            sx={{
+              p: 2,
+              borderBottom: 1,
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+            }}
+          >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box>
+                <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>
+                  {selectedBook.book_name}
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Grade {selectedBook.grade}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Page {currentPage + 1} of {selectedVersion.pages.length}
+                  <Chip
+                    label={selectedBook.processing_status}
+                    size="small"
+                    color={
+                      selectedBook.processing_status === 'approved'
+                        ? 'success'
+                        : selectedBook.processing_status === 'rejected'
+                        ? 'error'
+                        : 'warning'
+                    }
+                  />
+                  <Typography variant="body2" color="text.secondary">
+                    Page {currentPageIndex + 1} of {bookDetails?.pages.length || 0}
                   </Typography>
                 </Box>
-                <Chip
-                  label={selectedVersion.status}
-                  color={getStatusColor(selectedVersion.status) as any}
-                />
               </Box>
 
-              <Divider sx={{ my: 2 }} />
+              {/* Page Navigation */}
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<NavigateBefore />}
+                  onClick={handlePrevPage}
+                  disabled={currentPageIndex === 0}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  endIcon={<NavigateNext />}
+                  onClick={handleNextPage}
+                  disabled={!bookDetails || currentPageIndex >= bookDetails.pages.length - 1}
+                >
+                  Next
+                </Button>
+              </Box>
+            </Box>
+          </Box>
 
-              <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)} sx={{ mb: 2 }}>
-                <Tab label="Page Content" />
-                <Tab label="Actions" />
-              </Tabs>
+          {/* Main Content - Image and Blocks Side by Side */}
+          <Box sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+            {loadingPage ? (
+              <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <>
+                {/* Left Side - Page Image */}
+                <Box
+                  sx={{
+                    width: bookListCollapsed ? '45%' : '55%',
+                    transition: 'width 0.3s ease',
+                    borderRight: 1,
+                    borderColor: 'divider',
+                    overflow: 'auto',
+                    bgcolor: 'grey.50',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    p: 2,
+                  }}
+                >
+                  <Typography variant="h6" gutterBottom>
+                    Page Image
+                  </Typography>
+                  {currentPageData.imageUrl ? (
+                    <Box
+                      component="img"
+                      src={currentPageData.imageUrl}
+                      alt={`Page ${currentPageIndex + 1}`}
+                      sx={{
+                        width: '100%',
+                        height: 'auto',
+                        boxShadow: 3,
+                        borderRadius: 1,
+                      }}
+                    />
+                  ) : (
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        height: '400px',
+                        border: '2px dashed',
+                        borderColor: 'grey.400',
+                        borderRadius: 1,
+                        width: '100%',
+                      }}
+                    >
+                      <Typography color="text.secondary">No image available</Typography>
+                    </Box>
+                  )}
+                </Box>
 
-              {tabValue === 0 && (
-                <Box>
-                  {/* Page Navigation */}
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-                    <Button
-                      startIcon={<NavigateBefore />}
-                      onClick={handlePrevPage}
-                      disabled={currentPage === 0}
+                {/* Right Side - Text Blocks */}
+                <Box
+                  sx={{
+                    width: bookListCollapsed ? '55%' : '45%',
+                    transition: 'width 0.3s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {/* Header with Audio Speed Toggle */}
+                  <Box
+                    sx={{
+                      p: 2,
+                      borderBottom: 1,
+                      borderColor: 'divider',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      bgcolor: 'background.paper',
+                    }}
+                  >
+                    <Typography variant="h6">Text Blocks</Typography>
+                    <ToggleButtonGroup
+                      value={audioSpeed}
+                      exclusive
+                      onChange={(e, newSpeed) => newSpeed && setAudioSpeed(newSpeed)}
+                      size="small"
                     >
-                      Previous
-                    </Button>
-                    <Button
-                      endIcon={<NavigateNext />}
-                      onClick={handleNextPage}
-                      disabled={currentPage === selectedVersion.pages.length - 1}
-                    >
-                      Next
-                    </Button>
+                      <ToggleButton value="normal">Normal Speed</ToggleButton>
+                      <ToggleButton value="slow">Slow Speed</ToggleButton>
+                    </ToggleButtonGroup>
                   </Box>
 
-                  {/* Paragraphs List */}
-                  <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                    Paragraphs
-                  </Typography>
-                  <List>
-                    {selectedVersion.pages[currentPage]?.paragraphs.map((paragraph) => (
-                      <Paper
-                        key={paragraph.id}
+                  {/* Blocks List */}
+                  <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+                    {currentPageData.blocks.length === 0 ? (
+                      <Box
                         sx={{
-                          mb: 2,
-                          p: 2,
-                          cursor: 'pointer',
-                          bgcolor: selectedParagraph?.id === paragraph.id ? 'primary.light' : 'background.paper',
-                          border: selectedParagraph?.id === paragraph.id ? '2px solid primary.main' : '1px solid grey.300',
-                          '&:hover': { bgcolor: 'action.hover' },
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          height: '100%',
                         }}
-                        onClick={() => handleParagraphSelect(paragraph)}
                       >
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
-                          <Box sx={{ flex: 1 }}>
-                            <Typography variant="body2" gutterBottom>
-                              {paragraph.text}
-                            </Typography>
-                            <Typography
-                              variant="caption"
+                        <Typography color="text.secondary">
+                          No text blocks available for this page
+                        </Typography>
+                      </Box>
+                    ) : (
+                      currentPageData.blocks.map((block, index) => (
+                        <Paper
+                          key={block.id}
+                          elevation={playingBlockId === block.id ? 4 : 1}
+                          sx={{
+                            p: 2,
+                            mb: 2,
+                            bgcolor: playingBlockId === block.id ? 'primary.light' : 'background.paper',
+                            border: playingBlockId === block.id ? 2 : 0,
+                            borderColor: 'primary.main',
+                            transition: 'all 0.3s',
+                          }}
+                        >
+                          {/* Block Header */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                            <Chip
+                              label={`Block ${block.blockNumber !== undefined ? block.blockNumber : index}`}
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                            />
+                            {block.voiceId && (
+                              <Chip
+                                label={`Voice: ${block.voiceId}`}
+                                size="small"
+                                color="secondary"
+                                variant="outlined"
+                              />
+                            )}
+                            <IconButton
+                              onClick={() => handlePlayBlock(block.id)}
+                              color={playingBlockId === block.id ? 'primary' : 'default'}
                               sx={{
-                                fontFamily: 'monospace',
-                                bgcolor: 'grey.100',
-                                p: 1,
-                                borderRadius: 1,
-                                display: 'block',
-                                mt: 1,
-                                maxHeight: '80px',
-                                overflow: 'auto',
+                                bgcolor: playingBlockId === block.id ? 'primary.main' : 'grey.200',
+                                color: playingBlockId === block.id ? 'white' : 'inherit',
+                                '&:hover': {
+                                  bgcolor: playingBlockId === block.id ? 'primary.dark' : 'grey.300',
+                                },
                               }}
                             >
-                              {paragraph.ssmlText}
+                              {playingBlockId === block.id ? <Pause /> : <PlayArrow />}
+                            </IconButton>
+                            <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                              {audioSpeed === 'normal' ? 'Normal Speed' : 'Slow Speed'}
                             </Typography>
                           </Box>
-                          <Stack direction="column" spacing={1}>
-                            <IconButton
-                              size="small"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePlayParagraph(paragraph.id);
-                              }}
-                              color={isPlaying === paragraph.id ? 'primary' : 'default'}
-                            >
-                              {isPlaying === paragraph.id ? <PauseIcon /> : <PlayIcon />}
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditParagraph(paragraph);
-                              }}
-                            >
-                              <EditIcon />
-                            </IconButton>
-                          </Stack>
-                        </Box>
-                      </Paper>
-                    ))}
-                  </List>
-                </Box>
-              )}
 
-              {tabValue === 1 && (
-                <Stack spacing={2}>
-                  <Alert severity="info">
-                    Review the pages and paragraphs. Make corrections to SSML text, approve, reject, or request regeneration.
-                  </Alert>
-                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      startIcon={<ApproveIcon />}
-                      onClick={() => handleApproveBook(selectedVersion.id)}
-                      disabled={selectedVersion.status === 'approved'}
-                    >
-                      Approve Book
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      startIcon={<RejectIcon />}
-                      onClick={() => handleRejectBook(selectedVersion.id)}
-                    >
-                      Reject Book
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      startIcon={<RefreshIcon />}
-                      onClick={() => handleRequestRegeneration(selectedVersion.id)}
-                    >
-                      Request Regeneration
-                    </Button>
+                          {/* Block Text */}
+                          <Typography variant="body1" gutterBottom sx={{ mb: 2, lineHeight: 1.8 }}>
+                            {block.text}
+                          </Typography>
+
+                          <Divider sx={{ my: 2 }} />
+
+                          {/* SSML Input */}
+                          <TextField
+                            fullWidth
+                            multiline
+                            rows={3}
+                            label="SSML (Editable)"
+                            value={editedSsml[block.id] || block.ssml || ''}
+                            onChange={(e) => handleSsmlChange(block.id, e.target.value)}
+                            variant="outlined"
+                            size="small"
+                            sx={{
+                              '& .MuiInputBase-input': {
+                                fontFamily: 'monospace',
+                                fontSize: '0.85rem',
+                              },
+                            }}
+                            helperText="Edit SSML markup to modify speech synthesis"
+                          />
+                        </Paper>
+                      ))
+                    )}
                   </Box>
-                </Stack>
-              )}
-            </Paper>
-          ) : (
-            <Paper sx={{ p: 3, textAlign: 'center' }}>
-              <Typography color="textSecondary">
-                Select a book to review
-              </Typography>
-            </Paper>
-          )}
-        </Grid>
-      </Grid>
+
+                  {/* Review Actions Footer */}
+                  <Box
+                    sx={{
+                      p: 2,
+                      borderTop: 1,
+                      borderColor: 'divider',
+                      bgcolor: 'background.paper',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={<CheckCircle />}
+                        onClick={handleApproveBook}
+                        fullWidth
+                      >
+                        Approve Book
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        startIcon={<Cancel />}
+                        onClick={handleRejectBook}
+                        fullWidth
+                      >
+                        Reject Book
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="warning"
+                        startIcon={<Edit />}
+                        onClick={handleRequestRevision}
+                        fullWidth
+                      >
+                        Request Revision
+                      </Button>
+                    </Box>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={2}
+                      placeholder="Add reviewer notes..."
+                      value={reviewerNotes}
+                      onChange={(e) => setReviewerNotes(e.target.value)}
+                      variant="outlined"
+                      size="small"
+                    />
+                  </Box>
+                </Box>
+              </>
+            )}
+          </Box>
+        </Box>
       )}
 
-      {/* SSML Edit Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Edit SSML Text</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            multiline
-            rows={10}
-            value={editedSsml}
-            onChange={(e) => setEditedSsml(e.target.value)}
-            variant="outlined"
-            sx={{ mt: 2 }}
-            placeholder="<speak>Your SSML text here</speak>"
-          />
-          {selectedParagraph && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                Audio Preview:
-              </Typography>
-              <audio controls src={selectedParagraph.audioUrl} style={{ width: '100%' }} />
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleSaveEdit} variant="contained" color="primary">
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
 
 export default DigitalVersionReview;
+

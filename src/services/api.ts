@@ -348,6 +348,105 @@ export const ttsAPI = {
       throw error;
     }
   },
+
+  async getBooksForReview(params?: {
+    status?: string;
+    grade?: number;
+    limit?: number;
+    offset?: number;
+  }): Promise<any[]> {
+    try {
+      const url = new URL(API_ENDPOINTS.tts.booksForReview);
+      if (params?.status) url.searchParams.append('status', params.status);
+      if (params?.grade !== undefined) url.searchParams.append('grade', params.grade.toString());
+      if (params?.limit) url.searchParams.append('limit', params.limit.toString());
+      if (params?.offset) url.searchParams.append('offset', params.offset.toString());
+
+      const response = await fetch(url.toString());
+      if (!response.ok) {
+        throw new Error(`Failed to fetch books: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.success ? data.data : [];
+    } catch (error) {
+      console.error('Error fetching books for review:', error);
+      throw error;
+    }
+  },
+
+  async getBookDetails(bookId: string | number): Promise<any> {
+    try {
+      const response = await fetch(API_ENDPOINTS.tts.bookDetails(bookId));
+      if (!response.ok) {
+        throw new Error(`Failed to fetch book details: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.success ? data.data : null;
+    } catch (error) {
+      console.error('Error fetching book details:', error);
+      throw error;
+    }
+  },
+
+  async getPresignedUrls(
+    bookId: string | number,
+    s3Keys: string[],
+    expiresIn: number = 3600
+  ): Promise<Record<string, string>> {
+    try {
+      const response = await fetch(API_ENDPOINTS.tts.presignedUrls(bookId), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          s3_keys: s3Keys,
+          expires_in: expiresIn,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get presigned URLs: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.success ? data.data : {};
+    } catch (error) {
+      console.error('Error getting presigned URLs:', error);
+      throw error;
+    }
+  },
+
+  async updateReviewStatus(
+    bookId: string | number,
+    status: string,
+    reviewerNotes?: string
+  ): Promise<any> {
+    try {
+      const response = await fetch(API_ENDPOINTS.tts.reviewStatus(bookId), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status,
+          reviewer_notes: reviewerNotes,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update review status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error updating review status:', error);
+      throw error;
+    }
+  },
 };
 
 export default {
