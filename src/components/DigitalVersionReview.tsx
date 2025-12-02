@@ -97,7 +97,7 @@ const DigitalVersionReview: React.FC = () => {
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
-    severity: 'success' | 'error' | 'info';
+    severity: 'success' | 'error' | 'info' | 'warning';
   }>({ open: false, message: '', severity: 'info' });
   const [bookListCollapsed, setBookListCollapsed] = useState(false);
 
@@ -215,14 +215,18 @@ const DigitalVersionReview: React.FC = () => {
           // Convert blocks data to our format
           blocks = blocksArray.map((block: any, index: number) => {
             const blockNumber = block.blockNumber || index.toString();
+            // Use 'block_{page}_{num}' format to match backend audio file IDs
+            const blockId = `block_${page.page_number}_${blockNumber}`;
             return {
-              id: `${page.page_number}_${blockNumber}`,
+              id: blockId,
               text: block.text || block.content || '',
               ssml: block.ssml || block.text || '',
               voiceId: block.voice_id || 'Ruth',
               blockNumber: parseInt(blockNumber),
             };
           });
+          
+          console.log('Generated block IDs:', blocks.map(b => b.id));
           
           console.log('Parsed blocks:', blocks);
         } catch (err) {
@@ -236,8 +240,13 @@ const DigitalVersionReview: React.FC = () => {
         const key = `${audio.block_id}_${audio.audio_type}`;
         if (urls[audio.audio_s3_key]) {
           audioUrls[key] = urls[audio.audio_s3_key];
+          console.log(`Mapped audio: ${key} -> ${urls[audio.audio_s3_key].substring(0, 100)}...`);
+        } else {
+          console.warn(`Missing URL for audio key: ${audio.audio_s3_key}`);
         }
       });
+      
+      console.log('Audio files from backend:', page.audio_files.map(a => ({ block_id: a.block_id, type: a.audio_type })));
 
       setCurrentPageData({
         imageUrl: page.image_s3_key && urls[page.image_s3_key] ? urls[page.image_s3_key] : null,
@@ -248,6 +257,8 @@ const DigitalVersionReview: React.FC = () => {
         imageUrl: page.image_s3_key && urls[page.image_s3_key] ? urls[page.image_s3_key] : null,
         blocksCount: blocks.length,
         audioUrlsCount: Object.keys(audioUrls).length,
+        audioKeys: Object.keys(audioUrls),
+        blockIds: blocks.map(b => b.id),
       });
 
       // Initialize SSML edit state
@@ -298,6 +309,14 @@ const DigitalVersionReview: React.FC = () => {
       const audioKey = `${blockId}_${audioSpeed}`;
       const audioUrl = currentPageData.audioUrls[audioKey];
       
+      console.log('Attempting to play audio:', {
+        blockId,
+        audioSpeed,
+        audioKey,
+        audioUrl: audioUrl ? audioUrl.substring(0, 100) + '...' : 'NOT FOUND',
+        availableAudioKeys: Object.keys(currentPageData.audioUrls),
+      });
+      
       if (audioUrl) {
         const audio = new Audio(audioUrl);
         audio.play().catch(err => {
@@ -310,6 +329,14 @@ const DigitalVersionReview: React.FC = () => {
         });
         
         audio.onended = () => setPlayingBlockId(null);
+      } else {
+        console.error('No audio URL found for key:', audioKey);
+        setSnackbar({
+          open: true,
+          message: `No audio available for this block (${audioSpeed} speed)`,
+          severity: 'warning',
+        });
+        setPlayingBlockId(null);
       }
     }
   };
