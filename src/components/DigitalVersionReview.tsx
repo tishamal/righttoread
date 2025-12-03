@@ -16,6 +16,10 @@ import {
   Chip,
   ToggleButtonGroup,
   ToggleButton,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Tooltip,
 } from '@mui/material';
 import {
   PlayArrow,
@@ -27,7 +31,26 @@ import {
   Edit,
   ChevronLeft,
   ChevronRight,
+  ExpandMore,
+  DragIndicator,
 } from '@mui/icons-material';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { ttsAPI } from '../services/api';
 import BookListPanel from './BookListPanel';
 
@@ -75,6 +98,153 @@ interface BookDetails {
   pages: BookPage[];
 }
 
+// Sortable Block Item Component
+interface SortableBlockItemProps {
+  block: Block;
+  index: number;
+  isExpanded: boolean;
+  isPlaying: boolean;
+  audioSpeed: 'normal' | 'slow';
+  editedSsml: string;
+  onToggle: () => void;
+  onPlay: () => void;
+  onSsmlChange: (value: string) => void;
+}
+
+const SortableBlockItem: React.FC<SortableBlockItemProps> = ({
+  block,
+  index,
+  isExpanded,
+  isPlaying,
+  audioSpeed,
+  editedSsml,
+  onToggle,
+  onPlay,
+  onSsmlChange,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: block.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <Box ref={setNodeRef} style={style} sx={{ mb: 2 }}>
+      <Accordion
+        expanded={isExpanded}
+        onChange={onToggle}
+        sx={{
+          bgcolor: isPlaying ? 'primary.light' : 'background.paper',
+          border: isPlaying ? 2 : 1,
+          borderColor: isPlaying ? 'primary.main' : 'divider',
+          '&:before': { display: 'none' },
+          boxShadow: isPlaying ? 4 : 1,
+        }}
+      >
+        <AccordionSummary
+          expandIcon={<ExpandMore />}
+          sx={{
+            '& .MuiAccordionSummary-content': {
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+            },
+          }}
+        >
+          <Tooltip title="Drag to reorder">
+            <Box
+              {...attributes}
+              {...listeners}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                cursor: 'grab',
+                '&:active': { cursor: 'grabbing' },
+                mr: 1,
+              }}
+            >
+              <DragIndicator sx={{ color: 'text.secondary' }} />
+            </Box>
+          </Tooltip>
+          <Chip
+            label={`Block ${block.blockNumber !== undefined ? block.blockNumber : index}`}
+            size="small"
+            color="primary"
+            variant="outlined"
+          />
+          {block.voiceId && (
+            <Chip
+              label={`Voice: ${block.voiceId}`}
+              size="small"
+              color="secondary"
+              variant="outlined"
+            />
+          )}
+          <Tooltip title={isPlaying ? 'Pause' : 'Play'}>
+            <IconButton
+              onClick={(e) => {
+                e.stopPropagation();
+                onPlay();
+              }}
+              color={isPlaying ? 'primary' : 'default'}
+              sx={{
+                bgcolor: isPlaying ? 'primary.main' : 'grey.200',
+                color: isPlaying ? 'white' : 'inherit',
+                '&:hover': {
+                  bgcolor: isPlaying ? 'primary.dark' : 'grey.300',
+                },
+                ml: 'auto',
+              }}
+            >
+              {isPlaying ? <Pause /> : <PlayArrow />}
+            </IconButton>
+          </Tooltip>
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+            {audioSpeed === 'normal' ? 'Normal' : 'Slow'}
+          </Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          {/* Block Text */}
+          <Typography variant="body1" gutterBottom sx={{ mb: 2, lineHeight: 1.8 }}>
+            {block.text}
+          </Typography>
+
+          <Divider sx={{ my: 2 }} />
+
+          {/* SSML Input */}
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            label="SSML (Editable)"
+            value={editedSsml}
+            onChange={(e) => onSsmlChange(e.target.value)}
+            variant="outlined"
+            size="small"
+            onClick={(e) => e.stopPropagation()}
+            sx={{
+              '& .MuiInputBase-input': {
+                fontFamily: 'monospace',
+                fontSize: '0.85rem',
+              },
+            }}
+            helperText="Edit SSML markup to modify speech synthesis"
+          />
+        </AccordionDetails>
+      </Accordion>
+    </Box>
+  );
+};
+
 const DigitalVersionReview: React.FC = () => {
   const [books, setBooks] = useState<Book[]>([]);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
@@ -101,6 +271,19 @@ const DigitalVersionReview: React.FC = () => {
     severity: 'success' | 'error' | 'info' | 'warning';
   }>({ open: false, message: '', severity: 'info' });
   const [bookListCollapsed, setBookListCollapsed] = useState(false);
+  const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({});
+  const [blockOrder, setBlockOrder] = useState<{
+    normal: string[];
+    slow: string[];
+  }>({ normal: [], slow: [] });
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     fetchBooks();
@@ -281,6 +464,19 @@ const DigitalVersionReview: React.FC = () => {
         ssmlState[block.id] = block.ssml || block.text;
       });
       setEditedSsml(ssmlState);
+
+      // Initialize block order
+      setBlockOrder({
+        normal: normalBlocks.map(b => b.id),
+        slow: slowBlocks.map(b => b.id),
+      });
+
+      // Initialize all blocks as expanded
+      const expandedState: Record<string, boolean> = {};
+      [...normalBlocks, ...slowBlocks].forEach(block => {
+        expandedState[block.id] = true;
+      });
+      setExpandedBlocks(expandedState);
     } catch (error) {
       console.error('Error loading page data:', error);
       setSnackbar({
@@ -360,6 +556,43 @@ const DigitalVersionReview: React.FC = () => {
       ...prev,
       [blockId]: newSsml,
     }));
+  };
+
+  const handleToggleBlock = (blockId: string) => {
+    setExpandedBlocks(prev => ({
+      ...prev,
+      [blockId]: !prev[blockId],
+    }));
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const currentMode = audioSpeed;
+    const orderKey = currentMode === 'slow' ? 'slow' : 'normal';
+    const currentOrder = blockOrder[orderKey];
+
+    const oldIndex = currentOrder.indexOf(active.id as string);
+    const newIndex = currentOrder.indexOf(over.id as string);
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const newOrder = arrayMove(currentOrder, oldIndex, newIndex);
+      setBlockOrder(prev => ({
+        ...prev,
+        [orderKey]: newOrder,
+      }));
+
+      console.log('Block order updated:', newOrder);
+      setSnackbar({
+        open: true,
+        message: `Block order updated. Don't forget to save changes!`,
+        severity: 'info',
+      });
+    }
   };
 
   const handleApproveBook = async () => {
@@ -699,11 +932,62 @@ const DigitalVersionReview: React.FC = () => {
                     </ToggleButtonGroup>
                   </Box>
 
+                  {/* Blocks List Header with Expand/Collapse Controls */}
+                  <Box
+                    sx={{
+                      px: 2,
+                      py: 1,
+                      borderBottom: 1,
+                      borderColor: 'divider',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      bgcolor: 'background.default',
+                    }}
+                  >
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <DragIndicator fontSize="small" />
+                      Drag blocks to reorder
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        size="small"
+                        variant="text"
+                        onClick={() => {
+                          const currentBlocks = audioSpeed === 'slow' ? currentPageData.slowBlocks : currentPageData.normalBlocks;
+                          const newState: Record<string, boolean> = {};
+                          currentBlocks.forEach(block => {
+                            newState[block.id] = true;
+                          });
+                          setExpandedBlocks(prev => ({ ...prev, ...newState }));
+                        }}
+                      >
+                        Expand All
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="text"
+                        onClick={() => {
+                          const currentBlocks = audioSpeed === 'slow' ? currentPageData.slowBlocks : currentPageData.normalBlocks;
+                          const newState: Record<string, boolean> = {};
+                          currentBlocks.forEach(block => {
+                            newState[block.id] = false;
+                          });
+                          setExpandedBlocks(prev => ({ ...prev, ...newState }));
+                        }}
+                      >
+                        Collapse All
+                      </Button>
+                    </Box>
+                  </Box>
+
                   {/* Blocks List */}
                   <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
                     {(() => {
                       // Select the correct blocks based on audio speed
+                      const currentMode = audioSpeed === 'slow' ? 'slow' : 'normal';
                       const currentBlocks = audioSpeed === 'slow' ? currentPageData.slowBlocks : currentPageData.normalBlocks;
+                      const orderedBlockIds = blockOrder[currentMode];
                       
                       if (currentBlocks.length === 0) {
                         return (
@@ -721,81 +1005,42 @@ const DigitalVersionReview: React.FC = () => {
                           </Box>
                         );
                       }
+
+                      // Create a map for quick block lookup
+                      const blocksMap = new Map(currentBlocks.map(block => [block.id, block]));
                       
-                      return currentBlocks.map((block, index) => (
-                        <Paper
-                          key={block.id}
-                          elevation={playingBlockId === block.id ? 4 : 1}
-                          sx={{
-                            p: 2,
-                            mb: 2,
-                            bgcolor: playingBlockId === block.id ? 'primary.light' : 'background.paper',
-                            border: playingBlockId === block.id ? 2 : 0,
-                            borderColor: 'primary.main',
-                            transition: 'all 0.3s',
-                          }}
+                      // Order blocks according to blockOrder state
+                      const orderedBlocks = orderedBlockIds
+                        .map(id => blocksMap.get(id))
+                        .filter((block): block is Block => block !== undefined);
+                      
+                      return (
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={handleDragEnd}
                         >
-                          {/* Block Header */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                            <Chip
-                              label={`Block ${block.blockNumber !== undefined ? block.blockNumber : index}`}
-                              size="small"
-                              color="primary"
-                              variant="outlined"
-                            />
-                            {block.voiceId && (
-                              <Chip
-                                label={`Voice: ${block.voiceId}`}
-                                size="small"
-                                color="secondary"
-                                variant="outlined"
+                          <SortableContext
+                            items={orderedBlockIds}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            {orderedBlocks.map((block, index) => (
+                              <SortableBlockItem
+                                key={block.id}
+                                block={block}
+                                index={index}
+                                isExpanded={expandedBlocks[block.id] ?? true}
+                                isPlaying={playingBlockId === block.id}
+                                audioSpeed={audioSpeed}
+                                editedSsml={editedSsml[block.id] || block.ssml || ''}
+                                onToggle={() => handleToggleBlock(block.id)}
+                                onPlay={() => handlePlayBlock(block.id)}
+                                onSsmlChange={(value) => handleSsmlChange(block.id, value)}
                               />
-                            )}
-                            <IconButton
-                              onClick={() => handlePlayBlock(block.id)}
-                              color={playingBlockId === block.id ? 'primary' : 'default'}
-                              sx={{
-                                bgcolor: playingBlockId === block.id ? 'primary.main' : 'grey.200',
-                                color: playingBlockId === block.id ? 'white' : 'inherit',
-                                '&:hover': {
-                                  bgcolor: playingBlockId === block.id ? 'primary.dark' : 'grey.300',
-                                },
-                              }}
-                            >
-                              {playingBlockId === block.id ? <Pause /> : <PlayArrow />}
-                            </IconButton>
-                            <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
-                              {audioSpeed === 'normal' ? 'Normal Speed' : 'Slow Speed'}
-                            </Typography>
-                          </Box>
-
-                          {/* Block Text */}
-                          <Typography variant="body1" gutterBottom sx={{ mb: 2, lineHeight: 1.8 }}>
-                            {block.text}
-                          </Typography>
-
-                          <Divider sx={{ my: 2 }} />
-
-                          {/* SSML Input */}
-                          <TextField
-                            fullWidth
-                            multiline
-                            rows={3}
-                            label="SSML (Editable)"
-                            value={editedSsml[block.id] || block.ssml || ''}
-                            onChange={(e) => handleSsmlChange(block.id, e.target.value)}
-                            variant="outlined"
-                            size="small"
-                            sx={{
-                              '& .MuiInputBase-input': {
-                                fontFamily: 'monospace',
-                                fontSize: '0.85rem',
-                              },
-                            }}
-                            helperText="Edit SSML markup to modify speech synthesis"
-                          />
-                        </Paper>
-                      ));
+                            ))}
+                          </SortableContext>
+                        </DndContext>
+                      );
                     })()}
                   </Box>
 
