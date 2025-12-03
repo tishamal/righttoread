@@ -82,9 +82,10 @@ const DigitalVersionReview: React.FC = () => {
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [currentPageData, setCurrentPageData] = useState<{
     imageUrl: string | null;
-    blocks: Block[];
+    normalBlocks: Block[];
+    slowBlocks: Block[];
     audioUrls: Record<string, string>;
-  }>({ imageUrl: null, blocks: [], audioUrls: {} });
+  }>({ imageUrl: null, normalBlocks: [], slowBlocks: [], audioUrls: {} });
   const [playingBlockId, setPlayingBlockId] = useState<string | null>(null);
   const [audioSpeed, setAudioSpeed] = useState<'normal' | 'slow'>('normal');
   const [tabValue, setTabValue] = useState(0);
@@ -181,11 +182,12 @@ const DigitalVersionReview: React.FC = () => {
       console.log('Image S3 key:', page.image_s3_key);
       console.log('Image URL:', urls[page.image_s3_key || '']);
       
-      // Fetch blocks.json if available - prefer slow_blocks for slow reading, fallback to regular blocks
-      let blocks: Block[] = [];
-      const blocksKey = page.slow_blocks_s3_key || page.blocks_s3_key;
-      
-      if (blocksKey && urls[blocksKey]) {
+      // Helper function to fetch and parse blocks from a URL
+      const fetchBlocksFromUrl = async (blocksKey: string | null): Promise<Block[]> => {
+        if (!blocksKey || !urls[blocksKey]) {
+          return [];
+        }
+
         try {
           console.log('Fetching blocks from:', blocksKey);
           // Use proxy endpoint to avoid CORS issues
@@ -194,7 +196,7 @@ const DigitalVersionReview: React.FC = () => {
           
           const response = await fetch(proxyUrl);
           const blocksData = await response.json();
-          console.log('Blocks data received:', blocksData);
+          console.log('Blocks data received from', blocksKey, ':', blocksData);
           
           // Handle different JSON structures
           let blocksArray: any[] = [];
@@ -213,7 +215,7 @@ const DigitalVersionReview: React.FC = () => {
           }
           
           // Convert blocks data to our format
-          blocks = blocksArray.map((block: any, index: number) => {
+          const blocks = blocksArray.map((block: any, index: number) => {
             const blockNumber = block.blockNumber || index.toString();
             // Use 'block_{page}_{num}' format to match backend audio file IDs
             const blockId = `block_${page.page_number}_${blockNumber}`;
@@ -226,13 +228,22 @@ const DigitalVersionReview: React.FC = () => {
             };
           });
           
-          console.log('Generated block IDs:', blocks.map(b => b.id));
-          
-          console.log('Parsed blocks:', blocks);
+          console.log('Parsed blocks from', blocksKey, ':', blocks.map(b => ({ id: b.id, text: b.text.substring(0, 50) })));
+          return blocks;
         } catch (err) {
-          console.error('Error fetching blocks:', err);
+          console.error('Error fetching blocks from', blocksKey, ':', err);
+          return [];
         }
-      }
+      };
+
+      // Fetch BOTH normal and slow blocks
+      const [normalBlocks, slowBlocks] = await Promise.all([
+        fetchBlocksFromUrl(page.blocks_s3_key),
+        fetchBlocksFromUrl(page.slow_blocks_s3_key),
+      ]);
+      
+      console.log('Normal blocks count:', normalBlocks.length);
+      console.log('Slow blocks count:', slowBlocks.length);
 
       // Map audio URLs
       const audioUrls: Record<string, string> = {};
@@ -250,20 +261,23 @@ const DigitalVersionReview: React.FC = () => {
 
       setCurrentPageData({
         imageUrl: page.image_s3_key && urls[page.image_s3_key] ? urls[page.image_s3_key] : null,
-        blocks,
+        normalBlocks,
+        slowBlocks,
         audioUrls,
       });
       console.log('Current page data set:', {
         imageUrl: page.image_s3_key && urls[page.image_s3_key] ? urls[page.image_s3_key] : null,
-        blocksCount: blocks.length,
+        normalBlocksCount: normalBlocks.length,
+        slowBlocksCount: slowBlocks.length,
         audioUrlsCount: Object.keys(audioUrls).length,
         audioKeys: Object.keys(audioUrls),
-        blockIds: blocks.map(b => b.id),
+        normalBlockIds: normalBlocks.map(b => b.id),
+        slowBlockIds: slowBlocks.map(b => b.id),
       });
 
-      // Initialize SSML edit state
+      // Initialize SSML edit state for BOTH block sets
       const ssmlState: Record<string, string> = {};
-      blocks.forEach(block => {
+      [...normalBlocks, ...slowBlocks].forEach(block => {
         ssmlState[block.id] = block.ssml || block.text;
       });
       setEditedSsml(ssmlState);
@@ -641,35 +655,74 @@ const DigitalVersionReview: React.FC = () => {
                       bgcolor: 'background.paper',
                     }}
                   >
-                    <Typography variant="h6">Text Blocks</Typography>
+                    <Box>
+                      <Typography variant="h6">Text Blocks</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {audioSpeed === 'slow' 
+                          ? `Slow Reading Mode (${currentPageData.slowBlocks.length} blocks)`
+                          : `Normal Reading Mode (${currentPageData.normalBlocks.length} blocks)`
+                        }
+                      </Typography>
+                    </Box>
                     <ToggleButtonGroup
                       value={audioSpeed}
                       exclusive
-                      onChange={(e, newSpeed) => newSpeed && setAudioSpeed(newSpeed)}
+                      onChange={(e, newSpeed) => {
+                        if (newSpeed) {
+                          setAudioSpeed(newSpeed);
+                          setPlayingBlockId(null); // Stop any playing audio
+                          console.log('Audio speed changed to:', newSpeed);
+                        }
+                      }}
                       size="small"
                     >
-                      <ToggleButton value="normal">Normal Speed</ToggleButton>
-                      <ToggleButton value="slow">Slow Speed</ToggleButton>
+                      <ToggleButton value="normal">
+                        Normal Speed
+                        {currentPageData.normalBlocks.length > 0 && (
+                          <Chip 
+                            label={currentPageData.normalBlocks.length} 
+                            size="small" 
+                            sx={{ ml: 1 }}
+                          />
+                        )}
+                      </ToggleButton>
+                      <ToggleButton value="slow">
+                        Slow Speed
+                        {currentPageData.slowBlocks.length > 0 && (
+                          <Chip 
+                            label={currentPageData.slowBlocks.length} 
+                            size="small" 
+                            sx={{ ml: 1 }}
+                          />
+                        )}
+                      </ToggleButton>
                     </ToggleButtonGroup>
                   </Box>
 
                   {/* Blocks List */}
                   <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-                    {currentPageData.blocks.length === 0 ? (
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          height: '100%',
-                        }}
-                      >
-                        <Typography color="text.secondary">
-                          No text blocks available for this page
-                        </Typography>
-                      </Box>
-                    ) : (
-                      currentPageData.blocks.map((block, index) => (
+                    {(() => {
+                      // Select the correct blocks based on audio speed
+                      const currentBlocks = audioSpeed === 'slow' ? currentPageData.slowBlocks : currentPageData.normalBlocks;
+                      
+                      if (currentBlocks.length === 0) {
+                        return (
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              height: '100%',
+                            }}
+                          >
+                            <Typography color="text.secondary">
+                              No text blocks available for {audioSpeed} speed
+                            </Typography>
+                          </Box>
+                        );
+                      }
+                      
+                      return currentBlocks.map((block, index) => (
                         <Paper
                           key={block.id}
                           elevation={playingBlockId === block.id ? 4 : 1}
@@ -742,8 +795,8 @@ const DigitalVersionReview: React.FC = () => {
                             helperText="Edit SSML markup to modify speech synthesis"
                           />
                         </Paper>
-                      ))
-                    )}
+                      ));
+                    })()}
                   </Box>
 
                   {/* Review Actions Footer */}
