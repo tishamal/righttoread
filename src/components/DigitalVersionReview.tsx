@@ -20,6 +20,12 @@ import {
   AccordionSummary,
   AccordionDetails,
   Tooltip,
+  Select,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import {
   PlayArrow,
@@ -33,6 +39,7 @@ import {
   ChevronRight,
   ExpandMore,
   DragIndicator,
+  Refresh,
 } from '@mui/icons-material';
 import {
   DndContext,
@@ -54,12 +61,25 @@ import { CSS } from '@dnd-kit/utilities';
 import { ttsAPI } from '../services/api';
 import BookListPanel from './BookListPanel';
 
+// Amazon Polly Neural Voices - Matching backend configuration
+const AVAILABLE_VOICES = [
+  { id: 'Justin', name: 'Justin - Young Boy', personType: 'young boy' },
+  { id: 'Ivy', name: 'Ivy - Young Girl', personType: 'young girl' },
+  { id: 'Joey', name: 'Joey - Middle Aged Man', personType: 'middle aged man' },
+  { id: 'Ruth', name: 'Ruth - Middle Aged Woman', personType: 'middle aged woman' },
+  { id: 'Matthew', name: 'Matthew - Old Man', personType: 'old man' },
+  { id: 'Kimberly', name: 'Kimberly - Old Woman', personType: 'old woman' },
+  { id: 'Salli', name: 'Salli - Narrator', personType: 'narrator' },
+];
+
 interface Block {
-  id: string;
+  id: string;  // Unique ID for React (includes normal/slow suffix)
+  audioBlockId?: string;  // ID used for audio file lookup (without suffix)
   text: string;
   ssml?: string;
   voiceId?: string;
   blockNumber?: number;
+  originalPosition?: number;  // Track original position for display
   normalAudioUrl?: string;
   slowAudioUrl?: string;
   speechMarksUrl?: string;
@@ -101,26 +121,30 @@ interface BookDetails {
 // Sortable Block Item Component
 interface SortableBlockItemProps {
   block: Block;
-  index: number;
+  index: number;  // Display position (0, 1, 2, 3...)
   isExpanded: boolean;
   isPlaying: boolean;
   audioSpeed: 'normal' | 'slow';
   editedSsml: string;
+  voiceId: string;
   onToggle: () => void;
   onPlay: () => void;
   onSsmlChange: (value: string) => void;
+  onVoiceChange: (value: string) => void;
 }
 
 const SortableBlockItem: React.FC<SortableBlockItemProps> = ({
   block,
-  index,
+  index,  // This is the display position after reordering
   isExpanded,
   isPlaying,
   audioSpeed,
   editedSsml,
+  voiceId,
   onToggle,
   onPlay,
   onSsmlChange,
+  onVoiceChange,
 }) => {
   const {
     attributes,
@@ -176,19 +200,54 @@ const SortableBlockItem: React.FC<SortableBlockItemProps> = ({
             </Box>
           </Tooltip>
           <Chip
-            label={`Block ${block.blockNumber !== undefined ? block.blockNumber : index}`}
+            label={`Block ${index}`}
             size="small"
             color="primary"
             variant="outlined"
           />
-          {block.voiceId && (
-            <Chip
-              label={`Voice: ${block.voiceId}`}
-              size="small"
-              color="secondary"
-              variant="outlined"
-            />
+          {block.originalPosition !== undefined && block.originalPosition !== index && (
+            <Tooltip title={`Original block number from file: ${block.originalPosition}`}>
+              <Chip
+                label={`Original: ${block.originalPosition}`}
+                size="small"
+                color="warning"
+                variant="filled"
+                sx={{ fontSize: '0.7rem' }}
+              />
+            </Tooltip>
           )}
+          
+          {/* Voice Selector as compact dropdown */}
+          <Select
+            value={voiceId || 'Ruth'}
+            onChange={(e) => {
+              e.stopPropagation();
+              onVoiceChange(e.target.value);
+            }}
+            size="small"
+            variant="outlined"
+            onClick={(e) => e.stopPropagation()}
+            sx={{
+              minWidth: 140,
+              height: 28,
+              fontSize: '0.8125rem',
+              '& .MuiSelect-select': {
+                py: 0.5,
+                px: 1,
+              },
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'secondary.main',
+              },
+              bgcolor: 'background.paper',
+            }}
+          >
+            {AVAILABLE_VOICES.map((voice) => (
+              <MenuItem key={voice.id} value={voice.id} sx={{ fontSize: '0.875rem' }}>
+                {voice.name}
+              </MenuItem>
+            ))}
+          </Select>
+          
           <Tooltip title={isPlaying ? 'Pause' : 'Play'}>
             <IconButton
               onClick={(e) => {
@@ -265,6 +324,7 @@ const DigitalVersionReview: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('completed');
   const [gradeFilter, setGradeFilter] = useState('all');
   const [editedSsml, setEditedSsml] = useState<Record<string, string>>({});
+  const [voiceIds, setVoiceIds] = useState<Record<string, string>>({});
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -276,6 +336,10 @@ const DigitalVersionReview: React.FC = () => {
     normal: string[];
     slow: string[];
   }>({ normal: [], slow: [] });
+  
+  // Approval dialog states
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [approvalNotes, setApprovalNotes] = useState('');
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -366,13 +430,16 @@ const DigitalVersionReview: React.FC = () => {
       console.log('Image URL:', urls[page.image_s3_key || '']);
       
       // Helper function to fetch and parse blocks from a URL
-      const fetchBlocksFromUrl = async (blocksKey: string | null): Promise<Block[]> => {
+      const fetchBlocksFromUrl = async (
+        blocksKey: string | null, 
+        blockType: 'normal' | 'slow'
+      ): Promise<Block[]> => {
         if (!blocksKey || !urls[blocksKey]) {
           return [];
         }
 
         try {
-          console.log('Fetching blocks from:', blocksKey);
+          console.log('Fetching blocks from:', blocksKey, 'Type:', blockType);
           // Use proxy endpoint to avoid CORS issues
           const proxyUrl = `${process.env.REACT_APP_TTS_SERVICE_URL}/api/s3-proxy?s3_key=${encodeURIComponent(blocksKey)}`;
           console.log('Using proxy URL:', proxyUrl);
@@ -400,18 +467,31 @@ const DigitalVersionReview: React.FC = () => {
           // Convert blocks data to our format
           const blocks = blocksArray.map((block: any, index: number) => {
             const blockNumber = block.blockNumber || index.toString();
-            // Use 'block_{page}_{num}' format to match backend audio file IDs
-            const blockId = `block_${page.page_number}_${blockNumber}`;
+            const parsedBlockNumber = parseInt(blockNumber);
+            // Create unique ID for this block including the type (normal/slow)
+            // This ensures normal and slow blocks have different IDs
+            const blockId = `block_${page.page_number}_${blockNumber}_${blockType}`;
+            // For audio lookup, use the original format
+            const audioBlockId = `block_${page.page_number}_${blockNumber}`;
+            
             return {
-              id: blockId,
+              id: blockId,  // Unique ID for React and state management
+              audioBlockId,  // ID used for audio file lookups
               text: block.text || block.content || '',
               ssml: block.ssml || block.text || '',
               voiceId: block.voice_id || 'Ruth',
-              blockNumber: parseInt(blockNumber),
+              blockNumber: parsedBlockNumber,
+              originalPosition: parsedBlockNumber,  // Store original position from file
             };
           });
           
-          console.log('Parsed blocks from', blocksKey, ':', blocks.map(b => ({ id: b.id, text: b.text.substring(0, 50) })));
+          console.log('Parsed blocks from', blocksKey, ':', blocks.map(b => ({ 
+            id: b.id, 
+            audioBlockId: b.audioBlockId,
+            originalPosition: b.originalPosition,
+            text: b.text.substring(0, 50),
+            ssml: b.ssml?.substring(0, 50)
+          })));
           return blocks;
         } catch (err) {
           console.error('Error fetching blocks from', blocksKey, ':', err);
@@ -421,8 +501,8 @@ const DigitalVersionReview: React.FC = () => {
 
       // Fetch BOTH normal and slow blocks
       const [normalBlocks, slowBlocks] = await Promise.all([
-        fetchBlocksFromUrl(page.blocks_s3_key),
-        fetchBlocksFromUrl(page.slow_blocks_s3_key),
+        fetchBlocksFromUrl(page.blocks_s3_key, 'normal'),
+        fetchBlocksFromUrl(page.slow_blocks_s3_key, 'slow'),
       ]);
       
       console.log('Normal blocks count:', normalBlocks.length);
@@ -456,14 +536,44 @@ const DigitalVersionReview: React.FC = () => {
         audioKeys: Object.keys(audioUrls),
         normalBlockIds: normalBlocks.map(b => b.id),
         slowBlockIds: slowBlocks.map(b => b.id),
+        normalBlocksSample: normalBlocks.slice(0, 2).map(b => ({
+          id: b.id,
+          text: b.text.substring(0, 50),
+          ssml: b.ssml?.substring(0, 50)
+        })),
+        slowBlocksSample: slowBlocks.slice(0, 2).map(b => ({
+          id: b.id,
+          text: b.text.substring(0, 50),
+          ssml: b.ssml?.substring(0, 50)
+        })),
       });
 
-      // Initialize SSML edit state for BOTH block sets
+      // Initialize SSML edit state for BOTH block sets - use block.id as key
       const ssmlState: Record<string, string> = {};
-      [...normalBlocks, ...slowBlocks].forEach(block => {
+      const voiceState: Record<string, string> = {};
+      normalBlocks.forEach(block => {
         ssmlState[block.id] = block.ssml || block.text;
+        voiceState[block.id] = block.voiceId || 'Ruth';
+      });
+      slowBlocks.forEach(block => {
+        ssmlState[block.id] = block.ssml || block.text;
+        voiceState[block.id] = block.voiceId || 'Ruth';
       });
       setEditedSsml(ssmlState);
+      setVoiceIds(voiceState);
+      
+      console.log('SSML state initialized:', {
+        normalBlocksSsml: normalBlocks.slice(0, 2).map(b => ({
+          blockId: b.id,
+          ssml: ssmlState[b.id]?.substring(0, 50),
+          voiceId: voiceState[b.id]
+        })),
+        slowBlocksSsml: slowBlocks.slice(0, 2).map(b => ({
+          blockId: b.id,
+          ssml: ssmlState[b.id]?.substring(0, 50),
+          voiceId: voiceState[b.id]
+        })),
+      });
 
       // Initialize block order
       setBlockOrder({
@@ -509,18 +619,21 @@ const DigitalVersionReview: React.FC = () => {
     }
   };
 
-  const handlePlayBlock = (blockId: string) => {
+  const handlePlayBlock = (blockId: string, audioBlockId?: string) => {
     if (playingBlockId === blockId) {
       setPlayingBlockId(null);
     } else {
       setPlayingBlockId(blockId);
       
-      // Play audio
-      const audioKey = `${blockId}_${audioSpeed}`;
+      // Use audioBlockId for audio lookup if provided, otherwise fall back to blockId
+      const lookupId = audioBlockId || blockId;
+      const audioKey = `${lookupId}_${audioSpeed}`;
       const audioUrl = currentPageData.audioUrls[audioKey];
       
       console.log('Attempting to play audio:', {
         blockId,
+        audioBlockId,
+        lookupId,
         audioSpeed,
         audioKey,
         audioUrl: audioUrl ? audioUrl.substring(0, 100) + '...' : 'NOT FOUND',
@@ -558,6 +671,19 @@ const DigitalVersionReview: React.FC = () => {
     }));
   };
 
+  const handleVoiceChange = (blockId: string, newVoiceId: string) => {
+    setVoiceIds(prev => ({
+      ...prev,
+      [blockId]: newVoiceId,
+    }));
+    console.log(`Voice changed for block ${blockId}: ${newVoiceId}`);
+    setSnackbar({
+      open: true,
+      message: `Voice updated to ${newVoiceId}. Note: Audio will need to be regenerated for this change to take effect.`,
+      severity: 'info',
+    });
+  };
+
   const handleToggleBlock = (blockId: string) => {
     setExpandedBlocks(prev => ({
       ...prev,
@@ -586,10 +712,16 @@ const DigitalVersionReview: React.FC = () => {
         [orderKey]: newOrder,
       }));
 
-      console.log('Block order updated:', newOrder);
+      console.log('Block reordered:', {
+        movedBlock: active.id,
+        fromPosition: oldIndex,
+        toPosition: newIndex,
+        newOrder: newOrder.map((id, idx) => `Position ${idx}: ${id}`)
+      });
+      
       setSnackbar({
         open: true,
-        message: `Block order updated. Don't forget to save changes!`,
+        message: `Block moved from position ${oldIndex} to position ${newIndex}. Blocks renumbered in ascending order!`,
         severity: 'info',
       });
     }
@@ -599,7 +731,7 @@ const DigitalVersionReview: React.FC = () => {
     if (!selectedBook) return;
 
     try {
-      await ttsAPI.updateReviewStatus(selectedBook.id, 'approved', reviewerNotes);
+      await ttsAPI.updateReviewStatus(selectedBook.id, 'approved', approvalNotes);
       setSnackbar({
         open: true,
         message: 'Book approved successfully',
@@ -613,10 +745,12 @@ const DigitalVersionReview: React.FC = () => {
           : b
       ));
       
-      // Clear selection
+      // Clear selection and reset approval state
       setSelectedBook(null);
       setBookDetails(null);
       setReviewerNotes('');
+      setApproveDialogOpen(false);
+      setApprovalNotes('');
     } catch (error) {
       console.error('Error approving book:', error);
       setSnackbar({
@@ -625,6 +759,15 @@ const DigitalVersionReview: React.FC = () => {
         severity: 'error',
       });
     }
+  };
+
+  const handleOpenApproveDialog = () => {
+    setApproveDialogOpen(true);
+  };
+
+  const handleCloseApproveDialog = () => {
+    setApproveDialogOpen(false);
+    setApprovalNotes('');
   };
 
   const handleRejectBook = async () => {
@@ -788,6 +931,16 @@ const DigitalVersionReview: React.FC = () => {
 
               {/* Page Navigation */}
               <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<CheckCircle />}
+                  onClick={handleOpenApproveDialog}
+                  disabled={!bookDetails}
+                  color="success"
+                >
+                  Approve Book
+                </Button>
                 <Button
                   variant="outlined"
                   size="small"
@@ -1033,65 +1186,17 @@ const DigitalVersionReview: React.FC = () => {
                                 isPlaying={playingBlockId === block.id}
                                 audioSpeed={audioSpeed}
                                 editedSsml={editedSsml[block.id] || block.ssml || ''}
+                                voiceId={voiceIds[block.id] || block.voiceId || 'Ruth'}
                                 onToggle={() => handleToggleBlock(block.id)}
-                                onPlay={() => handlePlayBlock(block.id)}
+                                onPlay={() => handlePlayBlock(block.id, block.audioBlockId)}
                                 onSsmlChange={(value) => handleSsmlChange(block.id, value)}
+                                onVoiceChange={(value) => handleVoiceChange(block.id, value)}
                               />
                             ))}
                           </SortableContext>
                         </DndContext>
                       );
                     })()}
-                  </Box>
-
-                  {/* Review Actions Footer */}
-                  <Box
-                    sx={{
-                      p: 2,
-                      borderTop: 1,
-                      borderColor: 'divider',
-                      bgcolor: 'background.paper',
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                      <Button
-                        variant="contained"
-                        color="success"
-                        startIcon={<CheckCircle />}
-                        onClick={handleApproveBook}
-                        fullWidth
-                      >
-                        Approve Book
-                      </Button>
-                      <Button
-                        variant="contained"
-                        color="error"
-                        startIcon={<Cancel />}
-                        onClick={handleRejectBook}
-                        fullWidth
-                      >
-                        Reject Book
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="warning"
-                        startIcon={<Edit />}
-                        onClick={handleRequestRevision}
-                        fullWidth
-                      >
-                        Request Revision
-                      </Button>
-                    </Box>
-                    <TextField
-                      fullWidth
-                      multiline
-                      rows={2}
-                      placeholder="Add reviewer notes..."
-                      value={reviewerNotes}
-                      onChange={(e) => setReviewerNotes(e.target.value)}
-                      variant="outlined"
-                      size="small"
-                    />
                   </Box>
                 </Box>
               </>
@@ -1114,6 +1219,44 @@ const DigitalVersionReview: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Approve Book Dialog */}
+      <Dialog
+        open={approveDialogOpen}
+        onClose={handleCloseApproveDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Approve Book</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            You are about to approve this book. Please add any final notes or comments below.
+          </Typography>
+          <TextField
+            fullWidth
+            multiline
+            rows={4}
+            label="Approval Notes (Optional)"
+            placeholder="Add any final notes or comments about this book approval..."
+            value={approvalNotes}
+            onChange={(e) => setApprovalNotes(e.target.value)}
+            variant="outlined"
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleCloseApproveDialog} color="inherit">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleApproveBook}
+            variant="contained"
+            color="success"
+            startIcon={<CheckCircle />}
+          >
+            Confirm Approval
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
