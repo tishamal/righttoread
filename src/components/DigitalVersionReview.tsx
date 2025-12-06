@@ -1198,6 +1198,48 @@ const DigitalVersionReview: React.FC = () => {
                       );
                     })()}
                   </Box>
+
+                  {/* Page Action Buttons */}
+                  <Box
+                    sx={{
+                      p: 2,
+                      borderTop: 1,
+                      borderColor: 'divider',
+                      bgcolor: 'background.paper',
+                      display: 'flex',
+                      gap: 2,
+                      justifyContent: 'flex-end',
+                    }}
+                  >
+                    <Button
+                      variant="contained"
+                      color="success"
+                      startIcon={<CheckCircle />}
+                      onClick={() => {
+                        setSnackbar({
+                          open: true,
+                          message: `Page ${bookDetails?.pages[currentPageIndex]?.page_number} approved`,
+                          severity: 'success',
+                        });
+                      }}
+                    >
+                      Approve Page
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="warning"
+                      startIcon={<Refresh />}
+                      onClick={() => {
+                        setSnackbar({
+                          open: true,
+                          message: `Page ${bookDetails?.pages[currentPageIndex]?.page_number} queued for regeneration`,
+                          severity: 'info',
+                        });
+                      }}
+                    >
+                      Regenerate Page
+                    </Button>
+                  </Box>
                 </Box>
               </>
             )}
