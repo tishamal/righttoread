@@ -447,6 +447,42 @@ export const ttsAPI = {
       throw error;
     }
   },
+
+  async updatePageBlocks(
+    bookId: string | number,
+    pageNumber: number,
+    updates: {
+      blockOrder?: number[];
+      ssmlEdits?: Record<string, string>;
+      voiceChanges?: Record<string, string>;
+      audioSpeed?: 'normal' | 'slow';
+    }
+  ): Promise<any> {
+    try {
+      const response = await fetch(API_ENDPOINTS.tts.updateBlocks(bookId, pageNumber), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          blockOrder: updates.blockOrder,
+          ssmlEdits: updates.ssmlEdits,
+          voiceChanges: updates.voiceChanges,
+          audioSpeed: updates.audioSpeed || 'normal',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update page blocks: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error updating page blocks:', error);
+      throw error;
+    }
+  },
 };
 
 export default {
