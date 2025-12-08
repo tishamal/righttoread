@@ -98,6 +98,7 @@ interface Book {
 }
 
 interface BookPage {
+  id: number;
   page_number: number;
   status: string;
   image_s3_key: string | null;
@@ -471,12 +472,13 @@ const DigitalVersionReview: React.FC = () => {
             // Create unique ID for this block including the type (normal/slow)
             // This ensures normal and slow blocks have different IDs
             const blockId = `block_${page.page_number}_${blockNumber}_${blockType}`;
-            // For audio lookup, use the original format
-            const audioBlockId = `block_${page.page_number}_${blockNumber}`;
+            // For audio lookup, use simple block number to match database block_id format
+            // Database stores block_id as just the number (e.g., "5" not "block_0_5")
+            const audioBlockId = blockNumber;
             
             return {
               id: blockId,  // Unique ID for React and state management
-              audioBlockId,  // ID used for audio file lookups
+              audioBlockId,  // Simple block number for audio lookups (matches DB)
               text: block.text || block.content || '',
               ssml: block.ssml || block.text || '',
               voiceId: block.voice_id || 'Ruth',
@@ -684,6 +686,35 @@ const DigitalVersionReview: React.FC = () => {
     });
   };
 
+  const logAllBlockDetails = () => {
+    const currentBlocks = audioSpeed === 'slow' ? currentPageData.slowBlocks : currentPageData.normalBlocks;
+    const currentOrder = audioSpeed === 'slow' ? blockOrder.slow : blockOrder.normal;
+    
+    // Map blocks in the current order
+    const orderedBlocks = currentOrder.map((blockId, index) => {
+      const block = currentBlocks.find(b => b.id === blockId);
+      if (!block) return null;
+      
+      return {
+        blockNumber: index,  // Current position (not original)
+        originalBlockNumber: block.originalPosition,  // Original position from file
+        ssml: editedSsml[block.id] || block.ssml || '',
+        voiceId: voiceIds[block.id] || block.voiceId || 'Ruth',
+        text: block.text,
+      };
+    }).filter(b => b !== null);
+
+    console.log('=== ALL BLOCK DETAILS (JSON) ===');
+    console.log(JSON.stringify({
+      audioSpeed: audioSpeed,
+      pageNumber: bookDetails?.pages[currentPageIndex]?.page_number || currentPageIndex + 1,
+      totalBlocks: orderedBlocks.length,
+      blocks: orderedBlocks
+    }, null, 2));
+    
+    return orderedBlocks;
+  };
+
   const handleToggleBlock = (blockId: string) => {
     setExpandedBlocks(prev => ({
       ...prev,
@@ -758,6 +789,145 @@ const DigitalVersionReview: React.FC = () => {
         message: 'Failed to approve book',
         severity: 'error',
       });
+    }
+  };
+
+  const handleRegeneratePage = async () => {
+    if (!selectedBook || !bookDetails) return;
+
+    const currentPage = bookDetails.pages[currentPageIndex];
+    if (!currentPage) return;
+
+    try {
+      setLoadingPage(true);
+
+      // Step 1: Get current blocks from S3
+      const blocksResponse = await fetch(
+        `${process.env.REACT_APP_TTS_SERVICE_URL}/api/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/blocks?audio_speed=${audioSpeed}`
+      );
+
+      if (!blocksResponse.ok) {
+        throw new Error('Failed to load current blocks');
+      }
+
+      const blocksData = await blocksResponse.json();
+      const originalBlocks = blocksData.data.blocks;
+
+      // Step 2: Collect user changes
+      const currentBlocks = audioSpeed === 'slow' ? currentPageData.slowBlocks : currentPageData.normalBlocks;
+      const currentOrder = audioSpeed === 'slow' ? blockOrder.slow : blockOrder.normal;
+
+      const userChanges: any = {};
+
+      // Check for block reordering
+      const reorderedBlockIds = currentOrder.map((blockId) => {
+        const block = currentBlocks.find(b => b.id === blockId);
+        return block?.audioBlockId || blockId.replace('_normal', '').replace('_slow', '');
+      });
+
+      const originalBlockIds = Object.keys(originalBlocks);
+      if (JSON.stringify(reorderedBlockIds) !== JSON.stringify(originalBlockIds)) {
+        userChanges.reordered_block_ids = reorderedBlockIds;
+      }
+
+      // Collect voice changes
+      const voiceChanges: Record<string, string> = {};
+      currentOrder.forEach((blockId) => {
+        const block = currentBlocks.find(b => b.id === blockId);
+        const audioBlockId = block?.audioBlockId || blockId.replace('_normal', '').replace('_slow', '');
+        if (block && voiceIds[blockId] && voiceIds[blockId] !== block.voiceId) {
+          voiceChanges[audioBlockId] = voiceIds[blockId];
+        }
+      });
+
+      if (Object.keys(voiceChanges).length > 0) {
+        userChanges.voice_changes = voiceChanges;
+      }
+
+      // Collect SSML changes
+      const ssmlChanges: Record<string, string> = {};
+      currentOrder.forEach((blockId) => {
+        const block = currentBlocks.find(b => b.id === blockId);
+        const audioBlockId = block?.audioBlockId || blockId.replace('_normal', '').replace('_slow', '');
+        if (block && editedSsml[blockId] && editedSsml[blockId] !== block.ssml) {
+          ssmlChanges[audioBlockId] = editedSsml[blockId];
+        }
+      });
+
+      if (Object.keys(ssmlChanges).length > 0) {
+        userChanges.ssml_changes = ssmlChanges;
+      }
+
+      if (Object.keys(userChanges).length === 0) {
+        setSnackbar({
+          open: true,
+          message: 'No changes to save',
+          severity: 'info',
+        });
+        setLoadingPage(false);
+        return;
+      }
+
+      console.log('Updating page with changes:', userChanges);
+
+      // Step 3: Update blocks with Bedrock
+      const updateResponse = await fetch(
+        `${process.env.REACT_APP_TTS_SERVICE_URL}/api/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/update-blocks`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            original_blocks: originalBlocks,
+            user_changes: userChanges,
+          }),
+        }
+      );
+
+      if (!updateResponse.ok) {
+        const errorData = await updateResponse.json();
+        throw new Error(errorData.detail || 'Failed to update blocks');
+      }
+
+      const updateData = await updateResponse.json();
+      const updatedBlocks = updateData.data.updated_blocks;
+
+      // Step 4: Save changes (generate audio + upload to S3 + update DB)
+      const saveResponse = await fetch(
+        `${process.env.REACT_APP_TTS_SERVICE_URL}/api/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/save-changes`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            updated_blocks: updatedBlocks,
+            audio_speed: audioSpeed,
+            version_notes: `Updated via digital review: ${Object.keys(userChanges).join(', ')}`,
+          }),
+        }
+      );
+
+      if (!saveResponse.ok) {
+        const errorData = await saveResponse.json();
+        throw new Error(errorData.detail || 'Failed to save changes');
+      }
+
+      setSnackbar({
+        open: true,
+        message: `Page ${currentPage.page_number} updated successfully! Audio files regenerated.`,
+        severity: 'success',
+      });
+
+      // Reload page data to reflect changes
+      await loadPageData(currentPageIndex);
+
+    } catch (error) {
+      console.error('Error updating page:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to update page',
+        severity: 'error',
+      });
+    } finally {
+      setLoadingPage(false);
     }
   };
 
@@ -1208,37 +1378,48 @@ const DigitalVersionReview: React.FC = () => {
                       bgcolor: 'background.paper',
                       display: 'flex',
                       gap: 2,
-                      justifyContent: 'flex-end',
+                      justifyContent: 'space-between',
                     }}
                   >
                     <Button
-                      variant="contained"
-                      color="success"
-                      startIcon={<CheckCircle />}
-                      onClick={() => {
-                        setSnackbar({
-                          open: true,
-                          message: `Page ${bookDetails?.pages[currentPageIndex]?.page_number} approved`,
-                          severity: 'success',
-                        });
-                      }}
-                    >
-                      Approve Page
-                    </Button>
-                    <Button
                       variant="outlined"
-                      color="warning"
-                      startIcon={<Refresh />}
+                      color="info"
                       onClick={() => {
+                        logAllBlockDetails();
                         setSnackbar({
                           open: true,
-                          message: `Page ${bookDetails?.pages[currentPageIndex]?.page_number} queued for regeneration`,
+                          message: 'Block details logged to console (F12)',
                           severity: 'info',
                         });
                       }}
                     >
-                      Regenerate Page
+                      Log Blocks to Console
                     </Button>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={<CheckCircle />}
+                        onClick={() => {
+                          setSnackbar({
+                            open: true,
+                            message: `Page ${bookDetails?.pages[currentPageIndex]?.page_number} approved`,
+                            severity: 'success',
+                          });
+                        }}
+                      >
+                        Approve Page
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="warning"
+                        startIcon={<Refresh />}
+                        onClick={handleRegeneratePage}
+                        disabled={loadingPage}
+                      >
+                        {loadingPage ? 'Updating...' : 'Update & Save Page'}
+                      </Button>
+                    </Box>
                   </Box>
                 </Box>
               </>
