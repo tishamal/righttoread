@@ -257,46 +257,56 @@ function App() {
 
   const handleAddBook = async (bookData: BookFormData) => {
     try {
-      setUploading(true);
-      setUploadStatus({
-        open: true,
-        message: 'Processing book upload and generating TTS...',
-        severity: 'info',
-      });
-
       // Upload the PDF to TTS service
       if (bookData.pdfFile) {
-        try {
-          const ttsResult = await ttsAPI.uploadBook(bookData.pdfFile, bookData.startingPageNumber);
-          console.log('TTS processing result:', ttsResult);
-          
+        setUploading(true);
+        
+        // Initiate the TTS processing (fire and forget)
+        ttsAPI.uploadBook(bookData.pdfFile, bookData.startingPageNumber)
+          .then((ttsResult) => {
+            console.log('TTS processing completed:', ttsResult);
+            setUploadStatus({
+              open: true,
+              message: `Book "${bookData.name}" has been digitized successfully! ${ttsResult.total_pages_processed || 0} pages processed.`,
+              severity: 'success',
+            });
+            
+            // Refresh books list after processing completes
+            fetchBooks();
+          })
+          .catch((ttsError) => {
+            console.error('TTS processing failed:', ttsError);
+            setUploadStatus({
+              open: true,
+              message: `Failed to digitize "${bookData.name}". Please check the PDF file and try again.`,
+              severity: 'error',
+            });
+          });
+
+        // Show immediate feedback and stop loading
+        setTimeout(() => {
+          setUploading(false);
           setUploadStatus({
             open: true,
-            message: `TTS processing completed! ${ttsResult.total_pages_processed || 0} pages processed.`,
+            message: `Book "${bookData.name}" has been uploaded successfully! Digitization process started in the background. This may take several minutes depending on the book size.`,
             severity: 'success',
           });
 
-          // Create a local book entry for display
+          // Create a local book entry for immediate display
           const newBook: Book = {
-            id: (books.length + 1).toString(),
+            id: `temp-${Date.now()}`,
             title: bookData.name,
-            author: 'Unknown',
+            author: 'Ministry of Education Sri Lanka',
             grade: bookData.grade,
-            subject: 'Custom',
+            subject: 'English',
             image: 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=300&h=400&fit=crop',
-            status: 'Available',
+            status: 'Limited', // Show as Limited until processing completes
           };
           
           setBooks(prev => [...prev, newBook]);
-          console.log('New book added:', newBook);
-        } catch (ttsError) {
-          console.error('TTS processing failed:', ttsError);
-          setUploadStatus({
-            open: true,
-            message: 'TTS processing failed. Please check the PDF file and try again.',
-            severity: 'error',
-          });
-        }
+          console.log('Book upload initiated:', newBook);
+        }, 800); // Small delay to show the upload started
+
       } else {
         setUploadStatus({
           open: true,
@@ -308,10 +318,9 @@ function App() {
       console.error('Error adding book:', error);
       setUploadStatus({
         open: true,
-        message: 'Failed to process book. Please try again.',
+        message: 'Failed to upload book. Please try again.',
         severity: 'error',
       });
-    } finally {
       setUploading(false);
     }
   };
@@ -452,7 +461,7 @@ function App() {
                   sx={{ textTransform: 'none' }}
                   onClick={() => setAddBookModalOpen(true)}
                 >
-                  Create Book
+                  Digitize New Book
                 </Button>
               </Stack>
             </Box>

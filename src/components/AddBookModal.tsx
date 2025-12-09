@@ -125,6 +125,13 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ open, onClose, onSave }) =>
       return;
     }
 
+    // Validate file size (50MB limit)
+    const maxSize = 50 * 1024 * 1024; // 50MB in bytes
+    if (formData.pdfFile && formData.pdfFile.size > maxSize) {
+      alert('File size exceeds 50MB. Please upload a smaller PDF file.');
+      return;
+    }
+
     onSave(formData);
     handleClose();
   };
@@ -315,7 +322,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ open, onClose, onSave }) =>
           variant="contained"
           sx={{ textTransform: 'none', minWidth: 100 }}
         >
-          Save Book
+          Upload Book
         </Button>
       </DialogActions>
     </Dialog>
