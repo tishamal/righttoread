@@ -174,40 +174,205 @@ const AnalyticsDashboard: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      console.log('🔄 Fetching analytics data from backend...');
-      console.log('📡 API Base URL:', process.env.REACT_APP_API_URL || 'http://localhost:8080/api');
+      console.log('🔄 Loading demo analytics data...');
 
-      // Fetch all data in parallel
-      const [
-        overview,
-        schoolsData,
-        booksData,
-        timeline,
-        logs,
-        grades,
-      ] = await Promise.all([
-        analyticsAPI.getOverviewStats().catch((err) => { console.error('❌ Overview stats failed:', err); return null; }),
-        analyticsAPI.getSchoolsStats().catch((err) => { console.error('❌ Schools stats failed:', err); return []; }),
-        analyticsAPI.getPopularBooks(10).catch((err) => { console.error('❌ Popular books failed:', err); return []; }),
-        analyticsAPI.getTimelineData(timeRange).catch((err) => { console.error('❌ Timeline data failed:', err); return []; }),
-        analyticsAPI.getSyncLogs(50).catch((err) => { console.error('❌ Sync logs failed:', err); return []; }),
-        analyticsAPI.getBooksByGrade().catch((err) => { console.error('❌ Books by grade failed:', err); return []; }),
-      ]);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      console.log('✅ Analytics data fetched successfully');
-      console.log('📊 Data received:', { overview, schoolsData: schoolsData.length, booksData: booksData.length });
+      // DEMO DATA - Hardcoded for demonstration
+      const demoSchools: SchoolMetrics[] = [
+        {
+          id: 1,
+          schoolName: 'WERALUGOLLA P.V',
+          serialNumber: '03439',
+          totalReadingTimeMs: 45600000, // 12.67 hours
+          totalReadingTimeHours: 12.67,
+          totalBooksAccessed: 2,
+          totalRecords: 156,
+          lastSyncTime: Date.now() - 3600000, // 1 hour ago
+          isActive: true,
+        },
+        {
+          id: 2,
+          schoolName: 'MANINGAMUWA M.V.',
+          serialNumber: '04038',
+          totalReadingTimeMs: 38700000, // 10.75 hours
+          totalReadingTimeHours: 10.75,
+          totalBooksAccessed: 2,
+          totalRecords: 143,
+          lastSyncTime: Date.now() - 7200000, // 2 hours ago
+          isActive: true,
+        },
+        {
+          id: 3,
+          schoolName: 'GALEWELA PRIMARY SCHOOL',
+          serialNumber: '04083',
+          totalReadingTimeMs: 52200000, // 14.5 hours
+          totalReadingTimeHours: 14.5,
+          totalBooksAccessed: 2,
+          totalRecords: 189,
+          lastSyncTime: Date.now() - 1800000, // 30 minutes ago
+          isActive: true,
+        },
+        {
+          id: 4,
+          schoolName: 'SRI KUMARAN P .V',
+          serialNumber: '04347',
+          totalReadingTimeMs: 28800000, // 8 hours
+          totalReadingTimeHours: 8,
+          totalBooksAccessed: 1,
+          totalRecords: 98,
+          lastSyncTime: Date.now() - 10800000, // 3 hours ago
+          isActive: true,
+        },
+        {
+          id: 5,
+          schoolName: 'MENIKHINNA M.V',
+          serialNumber: '03222',
+          totalReadingTimeMs: 34200000, // 9.5 hours
+          totalReadingTimeHours: 9.5,
+          totalBooksAccessed: 2,
+          totalRecords: 127,
+          lastSyncTime: Date.now() - 5400000, // 1.5 hours ago
+          isActive: true,
+        },
+        {
+          id: 6,
+          schoolName: 'AL MUNAWWARA.MUS.P.V.',
+          serialNumber: '03714',
+          totalReadingTimeMs: 41400000, // 11.5 hours
+          totalReadingTimeHours: 11.5,
+          totalBooksAccessed: 2,
+          totalRecords: 165,
+          lastSyncTime: Date.now() - 2700000, // 45 minutes ago
+          isActive: true,
+        },
+        {
+          id: 7,
+          schoolName: 'BT/BT/ERAVUR TAMIL MAHA VIDYALAYAM',
+          serialNumber: '14060',
+          totalReadingTimeMs: 36900000, // 10.25 hours
+          totalReadingTimeHours: 10.25,
+          totalBooksAccessed: 2,
+          totalRecords: 134,
+          lastSyncTime: Date.now() - 4500000, // 1.25 hours ago
+          isActive: true,
+        },
+        {
+          id: 8,
+          schoolName: 'BT/BW/MUTHALAIKUDAH JUNIOR SCHOOL',
+          serialNumber: '14423',
+          totalReadingTimeMs: 25200000, // 7 hours
+          totalReadingTimeHours: 7,
+          totalBooksAccessed: 1,
+          totalRecords: 87,
+          lastSyncTime: Date.now() - 14400000, // 4 hours ago
+          isActive: true,
+        },
+      ];
 
-      setOverviewStats(overview);
-      setSchools(schoolsData);
-      setPopularBooks(booksData);
-      setTimelineData(timeline);
-      setSyncLogs(logs);
-      setGradeDistribution(grades);
+      const demoBooksData: BookAnalytics[] = [
+        {
+          bookId: 1,
+          bookTitle: 'Grade 3 English Book',
+          grade: 3,
+          totalActiveTimeMs: 152100000, // 42.25 hours total across all schools
+          totalAccessCount: 487,
+          uniqueSchools: 8,
+          avgSessionTimeMs: 1800000, // 30 minutes average
+          pagesAccessed: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+        },
+        {
+          bookId: 2,
+          bookTitle: 'Grade 4 English Book',
+          grade: 4,
+          totalActiveTimeMs: 150900000, // 41.92 hours total across all schools
+          totalAccessCount: 456,
+          uniqueSchools: 7,
+          avgSessionTimeMs: 2100000, // 35 minutes average
+          pagesAccessed: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
+        },
+      ];
+
+      const demoTimeline: TimeSeriesDataPoint[] = [];
+      const now = Date.now();
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(now - i * 24 * 60 * 60 * 1000);
+        demoTimeline.push({
+          timestamp: date.getTime(),
+          date: `${date.getMonth() + 1}/${date.getDate()}`,
+          totalSessions: Math.floor(15 + Math.random() * 25), // 15-40 sessions per day
+          totalActiveTimeMs: Math.floor(3600000 + Math.random() * 7200000), // 1-3 hours per day
+          uniqueBooks: 2,
+          uniqueSchools: Math.floor(5 + Math.random() * 4), // 5-8 schools active per day
+        });
+      }
+
+      const demoSyncLogs: SyncLogEntry[] = [];
+      for (let i = 0; i < 20; i++) {
+        const school = demoSchools[i % demoSchools.length];
+        const isSuccess = Math.random() > 0.1; // 90% success rate
+        demoSyncLogs.push({
+          id: i + 1,
+          schoolId: school.id,
+          schoolName: school.schoolName,
+          syncTimestamp: now - i * 3600000, // Every hour going back
+          recordsProcessed: Math.floor(10 + Math.random() * 30),
+          success: isSuccess,
+          errorMessage: !isSuccess ? 'Network timeout' : undefined,
+          createdAt: now - i * 3600000,
+        });
+      }
+
+      const demoGradeDistribution: GradeDistribution[] = [
+        {
+          grade: 3,
+          count: 487,
+          totalReadingTimeMs: 152100000,
+          percentage: 51.6,
+        },
+        {
+          grade: 4,
+          count: 456,
+          totalReadingTimeMs: 150900000,
+          percentage: 48.4,
+        },
+      ];
+
+      const demoOverview: OverviewStats = {
+        totalActiveSchools: 8,
+        totalBooks: 2,
+        totalReadingTimeMs: 303000000, // Sum of both books
+        totalReadingTimeHours: 84.17,
+        totalRecords: 1099, // Sum of all school records
+        activeSchoolsLast7Days: 8,
+        activeSchoolsLast30Days: 8,
+        percentageChange: {
+          schools: 14.3,
+          readingTime: 22.5,
+          records: 18.7,
+        },
+      };
+
+      console.log('✅ Demo analytics data loaded successfully');
+      console.log('📊 Demo data:', { 
+        schools: demoSchools.length, 
+        books: demoBooksData.length,
+        timeline: demoTimeline.length,
+        logs: demoSyncLogs.length,
+      });
+
+      setOverviewStats(demoOverview);
+      setSchools(demoSchools);
+      setPopularBooks(demoBooksData);
+      setTimelineData(demoTimeline);
+      setSyncLogs(demoSyncLogs);
+      setGradeDistribution(demoGradeDistribution);
 
       setLoading(false);
     } catch (err: any) {
-      console.error('Error fetching analytics:', err);
-      setError(err.message || 'Failed to fetch analytics data');
+      console.error('Error loading demo data:', err);
+      setError(err.message || 'Failed to load demo data');
       setLoading(false);
     }
   };
