@@ -140,9 +140,12 @@ export const analyticsAPI = {
   async getOverviewStats(): Promise<any> {
     try {
       const response = await fetch(API_ENDPOINTS.analytics.overview);
-      const data: ApiResponse<any> = await response.json();
-      if (!data.success) throw new Error(data.error || 'Failed to fetch overview stats');
-      return data.data || {};
+      if (!response.ok) {
+        throw new Error(`Failed to fetch overview stats: ${response.status}`);
+      }
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Failed to fetch overview stats');
+      return result.data || {};
     } catch (error) {
       console.error('Error fetching overview stats:', error);
       throw error;
@@ -156,20 +159,31 @@ export const analyticsAPI = {
       if (params?.limit) url.searchParams.append('limit', params.limit.toString());
       if (params?.offset) url.searchParams.append('offset', params.offset.toString());
       if (params?.sortBy) url.searchParams.append('sortBy', params.sortBy);
-      
+
       const response = await fetch(url.toString());
-      const data: ApiResponse<any[]> = await response.json();
-      if (!data.success) throw new Error(data.error || 'Failed to fetch schools stats');
-      return data.data || [];
+      if (!response.ok) {
+        throw new Error(`Failed to fetch schools stats: ${response.status}`);
+      }
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Failed to fetch schools stats');
+      return result.data || [];
     } catch (error) {
       console.error('Error fetching schools stats:', error);
       throw error;
     }
   },
 
+  // ✅ FIXED: School timeline (this is what was broken)
   async getSchoolTimeline(schoolId: number, range: string): Promise<any[]> {
     try {
-      const response = await fetch(`${API_ENDPOINTS.analytics.schoolTimeline(schoolId)}?range=${range}`);
+      const response = await fetch(
+        `${API_ENDPOINTS.analytics.schoolTimeline(schoolId)}?range=${encodeURIComponent(range)}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch school timeline: ${response.status}`);
+      }
+
       const data: ApiResponse<any[]> = await response.json();
       if (!data.success) throw new Error(data.error || 'Failed to fetch school timeline');
       return data.data || [];
@@ -184,11 +198,14 @@ export const analyticsAPI = {
     try {
       const url = new URL(API_ENDPOINTS.analytics.popularBooks);
       if (limit) url.searchParams.append('limit', limit.toString());
-      
+
       const response = await fetch(url.toString());
-      const data: ApiResponse<any[]> = await response.json();
-      if (!data.success) throw new Error(data.error || 'Failed to fetch popular books');
-      return data.data || [];
+      if (!response.ok) {
+        throw new Error(`Failed to fetch popular books: ${response.status}`);
+      }
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Failed to fetch popular books');
+      return result.data || [];
     } catch (error) {
       console.error('Error fetching popular books:', error);
       throw error;
@@ -198,9 +215,12 @@ export const analyticsAPI = {
   async getBookDetails(bookId: number): Promise<any> {
     try {
       const response = await fetch(API_ENDPOINTS.analytics.bookDetails(bookId));
-      const data: ApiResponse<any> = await response.json();
-      if (!data.success) throw new Error(data.error || 'Failed to fetch book details');
-      return data.data || {};
+      if (!response.ok) {
+        throw new Error(`Failed to fetch book details: ${response.status}`);
+      }
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Failed to fetch book details');
+      return result.data || {};
     } catch (error) {
       console.error('Error fetching book details:', error);
       throw error;
@@ -210,9 +230,12 @@ export const analyticsAPI = {
   async getBooksByGrade(): Promise<any[]> {
     try {
       const response = await fetch(API_ENDPOINTS.analytics.booksByGrade);
-      const data: ApiResponse<any[]> = await response.json();
-      if (!data.success) throw new Error(data.error || 'Failed to fetch books by grade');
-      return data.data || [];
+      if (!response.ok) {
+        throw new Error(`Failed to fetch books by grade: ${response.status}`);
+      }
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Failed to fetch books by grade');
+      return result.data || [];
     } catch (error) {
       console.error('Error fetching books by grade:', error);
       throw error;
@@ -222,10 +245,13 @@ export const analyticsAPI = {
   // Time series data
   async getTimelineData(range: string): Promise<any[]> {
     try {
-      const response = await fetch(`${API_ENDPOINTS.analytics.timeline}?range=${range}`);
-      const data: ApiResponse<any[]> = await response.json();
-      if (!data.success) throw new Error(data.error || 'Failed to fetch timeline data');
-      return data.data || [];
+      const response = await fetch(`${API_ENDPOINTS.analytics.timeline}?range=${encodeURIComponent(range)}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch timeline data: ${response.status}`);
+      }
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Failed to fetch timeline data');
+      return result.data || [];
     } catch (error) {
       console.error('Error fetching timeline data:', error);
       throw error;
@@ -235,9 +261,12 @@ export const analyticsAPI = {
   async getReadingPatterns(): Promise<any[]> {
     try {
       const response = await fetch(API_ENDPOINTS.analytics.readingPatterns);
-      const data: ApiResponse<any[]> = await response.json();
-      if (!data.success) throw new Error(data.error || 'Failed to fetch reading patterns');
-      return data.data || [];
+      if (!response.ok) {
+        throw new Error(`Failed to fetch reading patterns: ${response.status}`);
+      }
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Failed to fetch reading patterns');
+      return result.data || [];
     } catch (error) {
       console.error('Error fetching reading patterns:', error);
       throw error;
@@ -249,11 +278,14 @@ export const analyticsAPI = {
     try {
       const url = new URL(API_ENDPOINTS.analytics.pageEngagement);
       if (bookId) url.searchParams.append('bookId', bookId.toString());
-      
+
       const response = await fetch(url.toString());
-      const data: ApiResponse<any[]> = await response.json();
-      if (!data.success) throw new Error(data.error || 'Failed to fetch page engagement');
-      return data.data || [];
+      if (!response.ok) {
+        throw new Error(`Failed to fetch page engagement: ${response.status}`);
+      }
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Failed to fetch page engagement');
+      return result.data || [];
     } catch (error) {
       console.error('Error fetching page engagement:', error);
       throw error;
@@ -264,9 +296,12 @@ export const analyticsAPI = {
   async getSyncStatus(): Promise<any> {
     try {
       const response = await fetch(API_ENDPOINTS.analytics.syncStatus);
-      const data: ApiResponse<any> = await response.json();
-      if (!data.success) throw new Error(data.error || 'Failed to fetch sync status');
-      return data.data || {};
+      if (!response.ok) {
+        throw new Error(`Failed to fetch sync status: ${response.status}`);
+      }
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Failed to fetch sync status');
+      return result.data || {};
     } catch (error) {
       console.error('Error fetching sync status:', error);
       throw error;
@@ -277,11 +312,14 @@ export const analyticsAPI = {
     try {
       const url = new URL(API_ENDPOINTS.analytics.syncLogs);
       if (limit) url.searchParams.append('limit', limit.toString());
-      
+
       const response = await fetch(url.toString());
-      const data: ApiResponse<any[]> = await response.json();
-      if (!data.success) throw new Error(data.error || 'Failed to fetch sync logs');
-      return data.data || [];
+      if (!response.ok) {
+        throw new Error(`Failed to fetch sync logs: ${response.status}`);
+      }
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Failed to fetch sync logs');
+      return result.data || [];
     } catch (error) {
       console.error('Error fetching sync logs:', error);
       throw error;
@@ -291,9 +329,12 @@ export const analyticsAPI = {
   async getDeviceStats(): Promise<any[]> {
     try {
       const response = await fetch(API_ENDPOINTS.analytics.deviceStats);
-      const data: ApiResponse<any[]> = await response.json();
-      if (!data.success) throw new Error(data.error || 'Failed to fetch device stats');
-      return data.data || [];
+      if (!response.ok) {
+        throw new Error(`Failed to fetch device stats: ${response.status}`);
+      }
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Failed to fetch device stats');
+      return result.data || [];
     } catch (error) {
       console.error('Error fetching device stats:', error);
       throw error;
