@@ -224,21 +224,48 @@ function App() {
   const fetchBooks = async () => {
     try {
       const booksData = await booksAPI.getAll();
-      // Convert API books to match frontend Book interface
-      const convertedBooks = booksData.map((book: any) => ({
-        id: book.id,
-        title: book.title,
-        author: book.author,
-        grade: book.grade,
-        subject: book.subject,
-        image: 'https://images.unsplash.com/photo-1506880018603-83d5b814b5a6?w=300&h=400&fit=crop', // Default image
-        status: book.status === 'published' ? 'Available' : book.status === 'approved' ? 'Limited' : 'Draft',
-      }));
+      
+      // Transform backend book data to frontend Book interface
+      const convertedBooks = booksData.map((book: any) => {
+        // Format book name: "grade_3_english_book" -> "Grade 3 English Book"
+        const formatBookName = (name: string) => {
+          return name
+            .split('_')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+        };
+        
+        // Map processing status to UI status
+        const getUIStatus = (processingStatus: string) => {
+          switch (processingStatus) {
+            case 'completed':
+              return 'Available';
+            case 'processing':
+              return 'Limited';
+            case 'pending':
+            case 'failed':
+              return 'Draft';
+            default:
+              return 'Draft';
+          }
+        };
+        
+        return {
+          id: book.id.toString(),
+          title: book.book_name ? formatBookName(book.book_name) : 'Untitled Book',
+          author: 'Ministry of Education Sri Lanka',
+          grade: `Grade ${book.grade}`,
+          subject: 'English', // Default to English, can be enhanced later
+          image: 'https://images.unsplash.com/photo-1506880018603-83d5b814b5a6?w=300&h=400&fit=crop',
+          status: getUIStatus(book.processing_status),
+        };
+      });
+      
       setBooks(convertedBooks);
     } catch (error) {
       console.error('Failed to fetch books:', error);
-      // Fall back to sample data if API fails
-      setBooks(sampleBooks);
+      // Show empty state or keep existing books
+      setBooks([]);
     }
   };
 
