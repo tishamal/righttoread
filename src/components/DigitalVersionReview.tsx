@@ -442,7 +442,7 @@ const DigitalVersionReview: React.FC = () => {
         try {
           console.log('Fetching blocks from:', blocksKey, 'Type:', blockType);
           // Use proxy endpoint to avoid CORS issues
-          const proxyUrl = `${process.env.REACT_APP_TTS_SERVICE_URL}/api/s3-proxy?s3_key=${encodeURIComponent(blocksKey)}`;
+          const proxyUrl = `${process.env.REACT_APP_TTS_SERVICE_URL}/s3-proxy?s3_key=${encodeURIComponent(blocksKey)}`;
           console.log('Using proxy URL:', proxyUrl);
           
           const response = await fetch(proxyUrl);
@@ -803,7 +803,7 @@ const DigitalVersionReview: React.FC = () => {
 
       // Step 1: Get current blocks from S3
       const blocksResponse = await fetch(
-        `${process.env.REACT_APP_TTS_SERVICE_URL}/api/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/blocks?audio_speed=${audioSpeed}`
+        `${process.env.REACT_APP_TTS_SERVICE_URL}/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/blocks?audio_speed=${audioSpeed}`
       );
 
       if (!blocksResponse.ok) {
@@ -872,7 +872,7 @@ const DigitalVersionReview: React.FC = () => {
 
       // Step 3: Update blocks with Bedrock
       const updateResponse = await fetch(
-        `${process.env.REACT_APP_TTS_SERVICE_URL}/api/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/update-blocks`,
+        `${process.env.REACT_APP_TTS_SERVICE_URL}/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/update-blocks`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -893,7 +893,7 @@ const DigitalVersionReview: React.FC = () => {
 
       // Step 4: Save changes (generate audio + upload to S3 + update DB)
       const saveResponse = await fetch(
-        `${process.env.REACT_APP_TTS_SERVICE_URL}/api/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/save-changes`,
+        `${process.env.REACT_APP_TTS_SERVICE_URL}/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/save-changes`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },

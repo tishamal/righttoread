@@ -5,7 +5,7 @@
 export const BACKEND_API_URL = process.env.REACT_APP_BACKEND_API_URL || 'http://rtr-alb-1941150311.ap-southeast-1.elb.amazonaws.com/api';
 
 // TTS Service base URL (Python FastAPI service) - this includes /api for the endpoints in api.ts
-export const TTS_SERVICE_URL = process.env.REACT_APP_TTS_SERVICE_URL || 'http://47.129.10.145:8000/api';
+export const TTS_SERVICE_URL = process.env.REACT_APP_TTS_SERVICE_URL || 'http://rtr-alb-1941150311.ap-southeast-1.elb.amazonaws.com/api';
 
 // API Endpoints
 export const API_ENDPOINTS = {
