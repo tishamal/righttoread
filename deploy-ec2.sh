@@ -8,16 +8,29 @@ echo "Starting deployment process..."
 echo "Pulling latest changes from git..."
 git pull
 
-# 2. Rebuild and restart containers
-echo "Rebuilding and restarting containers..."
-# Try modern 'docker compose' first, fallback to legacy 'docker-compose'
-if docker compose version &> /dev/null; then
-    docker compose up -d --build
-else
-    docker-compose up -d --build
+# 2. Build the Docker image manually (no docker-compose needed)
+echo "Building Docker image (this includes npm install)..."
+docker build -t right-to-read-frontend:latest .
+
+if [ $? -ne 0 ]; then
+    echo "Docker build failed! Aborting deployment."
+    exit 1
 fi
 
-# 3. Cleanup unused images
+# 3. Stop and remove the old container
+echo "Stopping old container..."
+docker stop right-to-read-frontend 2>/dev/null || true
+docker rm right-to-read-frontend 2>/dev/null || true
+
+# 4. Run the new container
+echo "Starting new container..."
+docker run -d \
+  --name right-to-read-frontend \
+  --restart always \
+  -p 80:80 \
+  right-to-read-frontend:latest
+
+# 5. Cleanup
 echo "Cleaning up old images..."
 docker image prune -f
 
