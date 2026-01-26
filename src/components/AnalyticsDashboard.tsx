@@ -59,6 +59,7 @@ import {
   Error as ErrorIcon,
 } from '@mui/icons-material';
 import { analyticsAPI } from '../services/api';
+import { BACKEND_API_URL } from '../config/apiConfig';
 import {
   OverviewStats,
   SchoolMetrics,
@@ -174,12 +175,105 @@ const AnalyticsDashboard: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      console.log('🔄 Loading demo analytics data...');
+      console.log('🔄 Loading analytics data from database...');
+      console.log('📡 Backend API URL:', BACKEND_API_URL);
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Fetch all analytics data from the backend
+      const [
+        overviewResponse,
+        schoolsResponse,
+        booksResponse,
+        timelineResponse,
+        gradeResponse,
+        syncLogsResponse,
+      ] = await Promise.all([
+        analyticsAPI.getOverviewStats(),
+        analyticsAPI.getSchoolsStats({ limit: 100 }),
+        analyticsAPI.getPopularBooks(20),
+        analyticsAPI.getTimelineData(timeRange),
+        analyticsAPI.getBooksByGrade(),
+        analyticsAPI.getSyncLogs(50),
+      ]);
 
-      // DEMO DATA - Hardcoded for demonstration
+      console.log('✅ Analytics data loaded successfully from database');
+      console.log('📊 Data:', {
+        schools: schoolsResponse.length,
+        books: booksResponse.length,
+        timeline: timelineResponse.length,
+        logs: syncLogsResponse.length,
+      });
+
+      // Transform data to match frontend types
+      setOverviewStats({
+        totalActiveSchools: overviewResponse.totalActiveSchools,
+        totalBooks: overviewResponse.totalBooks,
+        totalReadingTimeMs: overviewResponse.totalReadingTimeMs,
+        totalReadingTimeHours: overviewResponse.totalReadingTimeHours,
+        totalRecords: overviewResponse.totalRecords,
+        activeSchoolsLast7Days: overviewResponse.activeSchoolsLast7Days,
+        activeSchoolsLast30Days: overviewResponse.activeSchoolsLast30Days,
+        percentageChange: overviewResponse.percentageChange,
+      });
+
+      setSchools(schoolsResponse.map((school: any) => ({
+        id: school.schoolId,
+        schoolName: school.schoolName,
+        serialNumber: school.serialNumber,
+        totalReadingTimeMs: school.totalReadingTimeMs,
+        totalReadingTimeHours: school.totalReadingTimeHours,
+        totalBooksAccessed: school.totalBooksAccessed,
+        totalRecords: school.totalRecords,
+        lastSyncTime: school.lastSyncTime,
+        isActive: school.isActive,
+      })));
+
+      setPopularBooks(booksResponse.map((book: any) => ({
+        bookId: book.bookId,
+        bookTitle: book.bookTitle,
+        grade: book.grade,
+        totalActiveTimeMs: book.totalActiveTimeMs,
+        totalAccessCount: book.totalAccessCount,
+        uniqueSchools: book.uniqueSchools,
+        avgSessionTimeMs: book.avgSessionTimeMs,
+        pagesAccessed: book.pagesAccessed || [],
+      })));
+
+      setTimelineData(timelineResponse.map((point: any) => ({
+        timestamp: point.timestamp,
+        date: point.date,
+        totalSessions: point.totalSessions,
+        totalActiveTimeMs: point.totalActiveTimeMs,
+        uniqueBooks: point.uniqueBooks,
+        uniqueSchools: point.uniqueSchools,
+      })));
+
+      setGradeDistribution(gradeResponse.map((grade: any) => ({
+        grade: grade.grade,
+        count: grade.count,
+        totalReadingTimeMs: grade.totalReadingTimeMs,
+        percentage: grade.percentage,
+      })));
+
+      setSyncLogs(syncLogsResponse.map((log: any) => ({
+        id: log.id,
+        schoolId: log.schoolId,
+        schoolName: log.schoolName,
+        syncTimestamp: log.syncTimestamp,
+        recordsProcessed: log.recordsProcessed,
+        success: log.success,
+        errorMessage: log.errorMessage,
+        createdAt: log.createdAt,
+      })));
+
+      setLoading(false);
+    } catch (err: any) {
+      console.error('Error loading analytics data from database:', err);
+      const errorMessage = `Failed to load analytics from ${BACKEND_API_URL}: ${err.message || 'Unknown error'}. Using demo data as fallback.`;
+      setError(errorMessage);
+      setLoading(false);
+
+      // Fallback to demo data on error
+      console.log('🔄 Loading demo analytics data as fallback...');
       const demoSchools: SchoolMetrics[] = [
         {
           id: 1,
@@ -354,9 +448,9 @@ const AnalyticsDashboard: React.FC = () => {
         },
       };
 
-      console.log('✅ Demo analytics data loaded successfully');
-      console.log('📊 Demo data:', { 
-        schools: demoSchools.length, 
+      console.log('✅ Demo analytics data loaded as fallback');
+      console.log('📊 Demo data:', {
+        schools: demoSchools.length,
         books: demoBooksData.length,
         timeline: demoTimeline.length,
         logs: demoSyncLogs.length,
@@ -369,10 +463,6 @@ const AnalyticsDashboard: React.FC = () => {
       setSyncLogs(demoSyncLogs);
       setGradeDistribution(demoGradeDistribution);
 
-      setLoading(false);
-    } catch (err: any) {
-      console.error('Error loading demo data:', err);
-      setError(err.message || 'Failed to load demo data');
       setLoading(false);
     }
   };
