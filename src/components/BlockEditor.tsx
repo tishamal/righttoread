@@ -85,7 +85,7 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
       setError(null);
 
       const response = await fetch(
-        `${process.env.REACT_APP_TTS_SERVICE_URL}/api/digital-review/books/${bookId}/pages/${pageId}/blocks?audio_speed=${audioSpeed}`
+        `${process.env.REACT_APP_TTS_SERVICE_URL}/digital-review/books/${bookId}/pages/${pageId}/blocks?audio_speed=${audioSpeed}`
       );
 
       if (!response.ok) {
@@ -191,7 +191,7 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
 
       // Call update blocks API
       const updateResponse = await fetch(
-        `${process.env.REACT_APP_TTS_SERVICE_URL}/api/digital-review/books/${bookId}/pages/${pageId}/update-blocks`,
+        `${process.env.REACT_APP_TTS_SERVICE_URL}/digital-review/books/${bookId}/pages/${pageId}/update-blocks`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -212,7 +212,7 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
 
       // Step 2: Save changes (generate audio + upload to S3 + update DB)
       const saveResponse = await fetch(
-        `${process.env.REACT_APP_TTS_SERVICE_URL}/api/digital-review/books/${bookId}/pages/${pageId}/save-changes`,
+        `${process.env.REACT_APP_TTS_SERVICE_URL}/digital-review/books/${bookId}/pages/${pageId}/save-changes`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
