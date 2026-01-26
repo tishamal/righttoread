@@ -803,9 +803,12 @@ const DigitalVersionReview: React.FC = () => {
     try {
       setLoadingPage(true);
 
+      // Define base URL with fallback to /api for hosted environment
+      const baseUrl = process.env.REACT_APP_TTS_SERVICE_URL || '/api';
+
       // Step 1: Get current blocks from S3
       const blocksResponse = await fetch(
-        `${process.env.REACT_APP_TTS_SERVICE_URL}/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/blocks?audio_speed=${audioSpeed}`
+        `${baseUrl}/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/blocks?audio_speed=${audioSpeed}`
       );
 
       if (!blocksResponse.ok) {
@@ -874,7 +877,7 @@ const DigitalVersionReview: React.FC = () => {
 
       // Step 3: Update blocks with Bedrock
       const updateResponse = await fetch(
-        `${process.env.REACT_APP_TTS_SERVICE_URL}/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/update-blocks`,
+        `${baseUrl}/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/update-blocks`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -895,7 +898,7 @@ const DigitalVersionReview: React.FC = () => {
 
       // Step 4: Save changes (generate audio + upload to S3 + update DB)
       const saveResponse = await fetch(
-        `${process.env.REACT_APP_TTS_SERVICE_URL}/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/save-changes`,
+        `${baseUrl}/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/save-changes`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
