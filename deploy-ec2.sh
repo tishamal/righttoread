@@ -6,12 +6,16 @@ echo "Starting deployment process..."
 
 # 1. Pull latest changes
 echo "Pulling latest changes from git..."
-git pull origin main
+git pull
 
 # 2. Rebuild and restart containers
 echo "Rebuilding and restarting containers..."
-# Use --build to ensure image is rebuilt with new code
-docker-compose up -d --build
+# Try modern 'docker compose' first, fallback to legacy 'docker-compose'
+if docker compose version &> /dev/null; then
+    docker compose up -d --build
+else
+    docker-compose up -d --build
+fi
 
 # 3. Cleanup unused images
 echo "Cleaning up old images..."
