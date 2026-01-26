@@ -442,7 +442,9 @@ const DigitalVersionReview: React.FC = () => {
         try {
           console.log('Fetching blocks from:', blocksKey, 'Type:', blockType);
           // Use proxy endpoint to avoid CORS issues
-          const proxyUrl = `${process.env.REACT_APP_TTS_SERVICE_URL}/s3-proxy?s3_key=${encodeURIComponent(blocksKey)}`;
+          // Fallback to /api if env var is missing (for hosted environment behind Nginx)
+          const baseUrl = process.env.REACT_APP_TTS_SERVICE_URL || '/api';
+          const proxyUrl = `${baseUrl}/s3-proxy?s3_key=${encodeURIComponent(blocksKey)}`;
           console.log('Using proxy URL:', proxyUrl);
           
           const response = await fetch(proxyUrl);
