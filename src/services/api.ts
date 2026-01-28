@@ -1,5 +1,6 @@
 // src/services/api.ts
-import { BACKEND_API_URL, API_ENDPOINTS } from '../config/apiConfig';
+import { API_ENDPOINTS } from '../config/apiConfig';
+import { httpClient } from '../utils/httpClient';
 
 export interface Book {
   id: string;
@@ -38,8 +39,7 @@ export const booksAPI = {
   async getAll(grade?: string): Promise<Book[]> {
     try {
       const url = grade ? `${API_ENDPOINTS.books}?grade=${encodeURIComponent(grade)}` : API_ENDPOINTS.books;
-      const response = await fetch(url);
-      const data: ApiResponse<Book[]> = await response.json();
+      const data = await httpClient.get<ApiResponse<Book[]>>(url);
       if (!data.success) throw new Error(data.error || 'Failed to fetch books');
       return data.data || [];
     } catch (error) {
@@ -50,8 +50,7 @@ export const booksAPI = {
 
   async getById(id: string): Promise<Book> {
     try {
-      const response = await fetch(API_ENDPOINTS.bookById(id));
-      const data: ApiResponse<Book> = await response.json();
+      const data = await httpClient.get<ApiResponse<Book>>(API_ENDPOINTS.bookById(id));
       if (!data.success) throw new Error(data.error || 'Failed to fetch book');
       return data.data!;
     } catch (error) {
@@ -62,8 +61,7 @@ export const booksAPI = {
 
   async getByGrade(grade: string): Promise<Book[]> {
     try {
-      const response = await fetch(API_ENDPOINTS.booksByGrade(grade));
-      const data: ApiResponse<Book[]> = await response.json();
+      const data = await httpClient.get<ApiResponse<Book[]>>(API_ENDPOINTS.booksByGrade(grade));
       if (!data.success) throw new Error(data.error || 'Failed to fetch books');
       return data.data || [];
     } catch (error) {
@@ -74,14 +72,7 @@ export const booksAPI = {
 
   async create(book: Partial<Book>): Promise<Book> {
     try {
-      const response = await fetch(API_ENDPOINTS.books, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(book),
-      });
-      const data: ApiResponse<Book> = await response.json();
+      const data = await httpClient.post<ApiResponse<Book>>(API_ENDPOINTS.books, book);
       if (!data.success) throw new Error(data.error || 'Failed to create book');
       return data.data!;
     } catch (error) {
@@ -92,14 +83,7 @@ export const booksAPI = {
 
   async update(id: string, book: Partial<Book>): Promise<Book> {
     try {
-      const response = await fetch(API_ENDPOINTS.bookById(id), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(book),
-      });
-      const data: ApiResponse<Book> = await response.json();
+      const data = await httpClient.put<ApiResponse<Book>>(API_ENDPOINTS.bookById(id), book);
       if (!data.success) throw new Error(data.error || 'Failed to update book');
       return data.data!;
     } catch (error) {
@@ -110,10 +94,7 @@ export const booksAPI = {
 
   async delete(id: string): Promise<void> {
     try {
-      const response = await fetch(API_ENDPOINTS.bookById(id), {
-        method: 'DELETE',
-      });
-      const data: ApiResponse<void> = await response.json();
+      const data = await httpClient.delete<ApiResponse<void>>(API_ENDPOINTS.bookById(id));
       if (!data.success) throw new Error(data.error || 'Failed to delete book');
     } catch (error) {
       console.error('Error deleting book:', error);
@@ -123,8 +104,7 @@ export const booksAPI = {
 
   async getCount(): Promise<number> {
     try {
-      const response = await fetch(API_ENDPOINTS.bookCount);
-      const data: ApiResponse<{ total: number }> = await response.json();
+      const data = await httpClient.get<ApiResponse<{ total: number }>>(API_ENDPOINTS.bookCount);
       if (!data.success) throw new Error(data.error || 'Failed to get book count');
       return data.data?.total || 0;
     } catch (error) {
@@ -139,11 +119,7 @@ export const analyticsAPI = {
   // Overview stats
   async getOverviewStats(): Promise<any> {
     try {
-      const response = await fetch(API_ENDPOINTS.analytics.overview);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch overview stats: ${response.status}`);
-      }
-      const result = await response.json();
+      const result = await httpClient.get<any>(API_ENDPOINTS.analytics.overview);
       if (!result.success) throw new Error(result.error || 'Failed to fetch overview stats');
       return result.data || {};
     } catch (error) {
@@ -160,11 +136,7 @@ export const analyticsAPI = {
       if (params?.offset) url.searchParams.append('offset', params.offset.toString());
       if (params?.sortBy) url.searchParams.append('sortBy', params.sortBy);
 
-      const response = await fetch(url.toString());
-      if (!response.ok) {
-        throw new Error(`Failed to fetch schools stats: ${response.status}`);
-      }
-      const result = await response.json();
+      const result = await httpClient.get<any>(url.toString());
       if (!result.success) throw new Error(result.error || 'Failed to fetch schools stats');
       return result.data || [];
     } catch (error) {
@@ -176,15 +148,9 @@ export const analyticsAPI = {
   // ✅ FIXED: School timeline (this is what was broken)
   async getSchoolTimeline(schoolId: number, range: string): Promise<any[]> {
     try {
-      const response = await fetch(
+      const data = await httpClient.get<ApiResponse<any[]>>(
         `${API_ENDPOINTS.analytics.schoolTimeline(schoolId)}?range=${encodeURIComponent(range)}`
       );
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch school timeline: ${response.status}`);
-      }
-
-      const data: ApiResponse<any[]> = await response.json();
       if (!data.success) throw new Error(data.error || 'Failed to fetch school timeline');
       return data.data || [];
     } catch (error) {
@@ -199,11 +165,7 @@ export const analyticsAPI = {
       const url = new URL(API_ENDPOINTS.analytics.popularBooks);
       if (limit) url.searchParams.append('limit', limit.toString());
 
-      const response = await fetch(url.toString());
-      if (!response.ok) {
-        throw new Error(`Failed to fetch popular books: ${response.status}`);
-      }
-      const result = await response.json();
+      const result = await httpClient.get<any>(url.toString());
       if (!result.success) throw new Error(result.error || 'Failed to fetch popular books');
       return result.data || [];
     } catch (error) {
@@ -214,11 +176,7 @@ export const analyticsAPI = {
 
   async getBookDetails(bookId: number): Promise<any> {
     try {
-      const response = await fetch(API_ENDPOINTS.analytics.bookDetails(bookId));
-      if (!response.ok) {
-        throw new Error(`Failed to fetch book details: ${response.status}`);
-      }
-      const result = await response.json();
+      const result = await httpClient.get<any>(API_ENDPOINTS.analytics.bookDetails(bookId));
       if (!result.success) throw new Error(result.error || 'Failed to fetch book details');
       return result.data || {};
     } catch (error) {
@@ -229,11 +187,7 @@ export const analyticsAPI = {
 
   async getBooksByGrade(): Promise<any[]> {
     try {
-      const response = await fetch(API_ENDPOINTS.analytics.booksByGrade);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch books by grade: ${response.status}`);
-      }
-      const result = await response.json();
+      const result = await httpClient.get<any>(API_ENDPOINTS.analytics.booksByGrade);
       if (!result.success) throw new Error(result.error || 'Failed to fetch books by grade');
       return result.data || [];
     } catch (error) {
@@ -245,11 +199,7 @@ export const analyticsAPI = {
   // Time series data
   async getTimelineData(range: string): Promise<any[]> {
     try {
-      const response = await fetch(`${API_ENDPOINTS.analytics.timeline}?range=${encodeURIComponent(range)}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch timeline data: ${response.status}`);
-      }
-      const result = await response.json();
+      const result = await httpClient.get<any>(`${API_ENDPOINTS.analytics.timeline}?range=${encodeURIComponent(range)}`);
       if (!result.success) throw new Error(result.error || 'Failed to fetch timeline data');
       return result.data || [];
     } catch (error) {
@@ -260,11 +210,7 @@ export const analyticsAPI = {
 
   async getReadingPatterns(): Promise<any[]> {
     try {
-      const response = await fetch(API_ENDPOINTS.analytics.readingPatterns);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch reading patterns: ${response.status}`);
-      }
-      const result = await response.json();
+      const result = await httpClient.get<any>(API_ENDPOINTS.analytics.readingPatterns);
       if (!result.success) throw new Error(result.error || 'Failed to fetch reading patterns');
       return result.data || [];
     } catch (error) {
@@ -279,11 +225,7 @@ export const analyticsAPI = {
       const url = new URL(API_ENDPOINTS.analytics.pageEngagement);
       if (bookId) url.searchParams.append('bookId', bookId.toString());
 
-      const response = await fetch(url.toString());
-      if (!response.ok) {
-        throw new Error(`Failed to fetch page engagement: ${response.status}`);
-      }
-      const result = await response.json();
+      const result = await httpClient.get<any>(url.toString());
       if (!result.success) throw new Error(result.error || 'Failed to fetch page engagement');
       return result.data || [];
     } catch (error) {
@@ -295,11 +237,7 @@ export const analyticsAPI = {
   // Sync & health
   async getSyncStatus(): Promise<any> {
     try {
-      const response = await fetch(API_ENDPOINTS.analytics.syncStatus);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch sync status: ${response.status}`);
-      }
-      const result = await response.json();
+      const result = await httpClient.get<any>(API_ENDPOINTS.analytics.syncStatus);
       if (!result.success) throw new Error(result.error || 'Failed to fetch sync status');
       return result.data || {};
     } catch (error) {
@@ -313,11 +251,7 @@ export const analyticsAPI = {
       const url = new URL(API_ENDPOINTS.analytics.syncLogs);
       if (limit) url.searchParams.append('limit', limit.toString());
 
-      const response = await fetch(url.toString());
-      if (!response.ok) {
-        throw new Error(`Failed to fetch sync logs: ${response.status}`);
-      }
-      const result = await response.json();
+      const result = await httpClient.get<any>(url.toString());
       if (!result.success) throw new Error(result.error || 'Failed to fetch sync logs');
       return result.data || [];
     } catch (error) {
@@ -328,11 +262,7 @@ export const analyticsAPI = {
 
   async getDeviceStats(): Promise<any[]> {
     try {
-      const response = await fetch(API_ENDPOINTS.analytics.deviceStats);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch device stats: ${response.status}`);
-      }
-      const result = await response.json();
+      const result = await httpClient.get<any>(API_ENDPOINTS.analytics.deviceStats);
       if (!result.success) throw new Error(result.error || 'Failed to fetch device stats');
       return result.data || [];
     } catch (error) {
@@ -350,16 +280,7 @@ export const ttsAPI = {
       formData.append('pdf_file', pdfFile);
       formData.append('starting_page_number', startingPageNumber.toString());
 
-      const response = await fetch(API_ENDPOINTS.tts.uploadBook, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Upload failed with status: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await httpClient.post<any>(API_ENDPOINTS.tts.uploadBook, formData);
       return data;
     } catch (error) {
       console.error('Error uploading book for TTS processing:', error);
@@ -373,16 +294,7 @@ export const ttsAPI = {
       formData.append('pdf_file', pdfFile);
       formData.append('starting_page_number', startingPageNumber.toString());
 
-      const response = await fetch(API_ENDPOINTS.tts.uploadWithDownload, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Upload failed with status: ${response.status}`);
-      }
-
-      const blob = await response.blob();
+      const blob = await httpClient.uploadRaw<Blob>(API_ENDPOINTS.tts.uploadWithDownload, formData);
       return blob;
     } catch (error) {
       console.error('Error uploading book for TTS processing with download:', error);
@@ -403,12 +315,7 @@ export const ttsAPI = {
       if (params?.limit) url.searchParams.append('limit', params.limit.toString());
       if (params?.offset) url.searchParams.append('offset', params.offset.toString());
 
-      const response = await fetch(url.toString());
-      if (!response.ok) {
-        throw new Error(`Failed to fetch books: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await httpClient.get<any>(url.toString());
       return data.success ? data.data : [];
     } catch (error) {
       console.error('Error fetching books for review:', error);
@@ -418,12 +325,7 @@ export const ttsAPI = {
 
   async getBookDetails(bookId: string | number): Promise<any> {
     try {
-      const response = await fetch(API_ENDPOINTS.tts.bookDetails(bookId));
-      if (!response.ok) {
-        throw new Error(`Failed to fetch book details: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await httpClient.get<any>(API_ENDPOINTS.tts.bookDetails(bookId));
       return data.success ? data.data : null;
     } catch (error) {
       console.error('Error fetching book details:', error);
@@ -437,22 +339,11 @@ export const ttsAPI = {
     expiresIn: number = 3600
   ): Promise<Record<string, string>> {
     try {
-      const response = await fetch(API_ENDPOINTS.tts.presignedUrls(bookId), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const data = await httpClient.post<any>(API_ENDPOINTS.tts.presignedUrls(bookId), {
           s3_keys: s3Keys,
           expires_in: expiresIn,
-        }),
-      });
+        });
 
-      if (!response.ok) {
-        throw new Error(`Failed to get presigned URLs: ${response.status}`);
-      }
-
-      const data = await response.json();
       return data.success ? data.data : {};
     } catch (error) {
       console.error('Error getting presigned URLs:', error);
@@ -466,22 +357,10 @@ export const ttsAPI = {
     reviewerNotes?: string
   ): Promise<any> {
     try {
-      const response = await fetch(API_ENDPOINTS.tts.reviewStatus(bookId), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const data = await httpClient.put<any>(API_ENDPOINTS.tts.reviewStatus(bookId), {
           status,
           reviewer_notes: reviewerNotes,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to update review status: ${response.status}`);
-      }
-
-      const data = await response.json();
+        });
       return data;
     } catch (error) {
       console.error('Error updating review status:', error);
@@ -500,24 +379,12 @@ export const ttsAPI = {
     }
   ): Promise<any> {
     try {
-      const response = await fetch(API_ENDPOINTS.tts.updateBlocks(bookId, pageNumber), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const data = await httpClient.post<any>(API_ENDPOINTS.tts.updateBlocks(bookId, pageNumber), {
           blockOrder: updates.blockOrder,
           ssmlEdits: updates.ssmlEdits,
           voiceChanges: updates.voiceChanges,
           audioSpeed: updates.audioSpeed || 'normal',
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to update page blocks: ${response.status}`);
-      }
-
-      const data = await response.json();
+        });
       return data;
     } catch (error) {
       console.error('Error updating page blocks:', error);
