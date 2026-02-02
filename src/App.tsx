@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import AddBookModal from './components/AddBookModal';
+import GenerateImagesModal from './components/GenerateImagesModal';
 import Login from './components/Login';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import DigitalVersionReview from './components/DigitalVersionReview';
@@ -46,6 +47,7 @@ import {
   Notifications as NotificationsIcon,
   FilterList as FilterIcon,
   Add as AddIcon,
+  AutoAwesome as MagicIcon,
   MenuBook as BookIcon,
   Equalizer as AnalyticsIcon,
   Audiotrack as AudioIcon,
@@ -192,6 +194,7 @@ function App() {
   const [selectedGrade, setSelectedGrade] = useState('All Grades');
   const [currentPage, setCurrentPage] = useState('Dashboard');
   const [addBookModalOpen, setAddBookModalOpen] = useState(false);
+  const [generateImagesModalOpen, setGenerateImagesModalOpen] = useState(false);
   const [books, setBooks] = useState<Book[]>(sampleBooks);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<string>('');
@@ -483,6 +486,14 @@ function App() {
                   Filter
                 </Button>
                 <Button
+                  variant="outlined"
+                  startIcon={<MagicIcon />}
+                  sx={{ textTransform: 'none' }}
+                  onClick={() => setGenerateImagesModalOpen(true)}
+                >
+                  Generate Picture Dictionary
+                </Button>
+                <Button
                   variant="contained"
                   startIcon={<AddIcon />}
                   sx={{ textTransform: 'none' }}
@@ -646,6 +657,12 @@ function App() {
           open={addBookModalOpen}
           onClose={() => setAddBookModalOpen(false)}
           onSave={handleAddBook}
+        />
+
+        <GenerateImagesModal
+          open={generateImagesModalOpen}
+          onClose={() => setGenerateImagesModalOpen(false)}
+          onSuccess={(message) => setUploadStatus({ open: true, message, severity: 'success' })}
         />
 
         {/* Upload Status Snackbar */}

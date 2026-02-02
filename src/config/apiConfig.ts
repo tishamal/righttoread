@@ -2,10 +2,10 @@
 // Single source of truth for all backend URLs
 
 // Backend API base URL
-export const BACKEND_API_URL = process.env.REACT_APP_BACKEND_API_URL || 'http://rtr-alb-1941150311.ap-southeast-1.elb.amazonaws.com/api';
+export const BACKEND_API_URL = process.env.REACT_APP_BACKEND_API_URL;
 
-// TTS Service base URL (Python FastAPI service) - this includes /api for the endpoints in api.ts
-export const TTS_SERVICE_URL = process.env.REACT_APP_TTS_SERVICE_URL || 'http://rtr-alb-1941150311.ap-southeast-1.elb.amazonaws.com/api';
+// TTS Service base URL
+export const TTS_SERVICE_URL = process.env.REACT_APP_TTS_SERVICE_URL;
 
 // API Endpoints
 export const API_ENDPOINTS = {
@@ -29,6 +29,12 @@ export const API_ENDPOINTS = {
     syncStatus: `${BACKEND_API_URL}/analytics/sync/status`,
     syncLogs: `${BACKEND_API_URL}/analytics/sync/logs`,
     deviceStats: `${BACKEND_API_URL}/analytics/device/stats`,
+  },
+
+  // Image Generation
+  images: {
+      pending: `${TTS_SERVICE_URL}/v1/images/books-pending`,
+      generate: (bookId: number | string) => `${TTS_SERVICE_URL}/v1/images/generate/${bookId}`,
   },
 
   // TTS Service endpoints (Python FastAPI service)

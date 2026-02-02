@@ -393,8 +393,39 @@ export const ttsAPI = {
   },
 };
 
+export interface PendingBook {
+  id: number;
+  title: string;
+  grade: number;
+  status: string; // 'pending', 'processing', 'failed'
+  total_words: number;
+}
+
+export const imagesAPI = {
+    async getPendingBooks(): Promise<PendingBook[]> {
+        try {
+            const data = await httpClient.get<PendingBook[]>(API_ENDPOINTS.images.pending);
+            return data;
+        } catch (error) {
+            console.error('Error fetching pending books:', error);
+            throw error;
+        }
+    },
+
+    async generateImages(bookId: number | string): Promise<any> {
+        try {
+            const data = await httpClient.post(API_ENDPOINTS.images.generate(bookId), {});
+            return data;
+        } catch (error) {
+            console.error('Error generating images:', error);
+            throw error;
+        }
+    }
+};
+
 export default {
   booksAPI,
   analyticsAPI,
   ttsAPI,
+  imagesAPI,
 };
