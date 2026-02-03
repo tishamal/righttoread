@@ -80,7 +80,7 @@ import {
 } from '../utils/analyticsHelpers';
 
 
-const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'];
+const COLORS = ['#6365f1ef', '#0ea4e9ea', '#8a5cf6f6', '#14b8a5f4', '#3b83f6f4', '#06b5d4f1', '#10b981f3', '#d846eff1'];
 
 interface StatCardProps {
   title: string;
@@ -468,16 +468,20 @@ const AnalyticsDashboard: React.FC = () => {
                     <Line
                       type="monotone"
                       dataKey="totalSessions"
-                      stroke="#8884d8"
+                      stroke="#6366f1"
                       name="Sessions"
                       strokeWidth={2}
+                      dot={{ r: 4, fill: '#6366f1', strokeWidth: 2 }}
+                      activeDot={{ r: 6 }}
                     />
                     <Line
                       type="monotone"
                       dataKey="uniqueSchools"
-                      stroke="#82ca9d"
+                      stroke="#0ea5e9"
                       name="Active Schools"
                       strokeWidth={2}
+                      dot={{ r: 4, fill: '#0ea5e9', strokeWidth: 2 }}
+                      activeDot={{ r: 6 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -499,7 +503,7 @@ const AnalyticsDashboard: React.FC = () => {
                         cy="50%"
                         innerRadius={60}
                         outerRadius={100}
-                        fill="#8884d8"
+                        fill="#6366f1"
                         paddingAngle={5}
                         dataKey="count"
                         label={(entry) => `Grade ${entry.grade}`}
@@ -549,7 +553,7 @@ const AnalyticsDashboard: React.FC = () => {
                       <Legend />
                       <Bar
                         dataKey="totalAccessCount"
-                        fill="#8884d8"
+                        fill="#6366f1"
                         name="Times Opened"
                         radius={[0, 8, 8, 0]}
                       >

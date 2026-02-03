@@ -135,19 +135,20 @@ export const formatPercentage = (value: number, total: number): string => {
 
 /**
  * Get color based on grade level
+ * Updated to match the new Indigo/Sky theme
  */
 export const getGradeColor = (grade: number): string => {
   const gradeColors: { [key: number]: string } = {
-    3: '#FF6B6B',
-    4: '#4ECDC4',
-    5: '#45B7D1',
-    6: '#FFA07A',
-    7: '#98D8C8',
-    8: '#F7DC6F',
-    9: '#BB8FCE',
-    10: '#85C1E2',
+    3: '#6366f1', // Indigo (Primary)
+    4: '#0ea5e9', // Sky (Secondary)
+    5: '#8b5cf6', // Violet
+    6: '#14b8a6', // Teal
+    7: '#3b82f6', // Blue
+    8: '#06b6d4', // Cyan
+    9: '#10b981', // Emerald
+    10: '#d946ef', // Fuchsia
   };
-  return gradeColors[grade] || '#95A5A6';
+  return gradeColors[grade] || '#64748b'; // Slate 500
 };
 
 /**
