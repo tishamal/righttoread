@@ -1383,23 +1383,9 @@ const DigitalVersionReview: React.FC = () => {
                       bgcolor: 'background.paper',
                       display: 'flex',
                       gap: 2,
-                      justifyContent: 'space-between',
+                      justifyContent: 'flex-end',
                     }}
                   >
-                    <Button
-                      variant="outlined"
-                      color="info"
-                      onClick={() => {
-                        logAllBlockDetails();
-                        setSnackbar({
-                          open: true,
-                          message: 'Block details logged to console (F12)',
-                          severity: 'info',
-                        });
-                      }}
-                    >
-                      Log Blocks to Console
-                    </Button>
                     <Box sx={{ display: 'flex', gap: 2 }}>
                       <Button
                         variant="contained"

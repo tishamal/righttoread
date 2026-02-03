@@ -1,42 +1,55 @@
 /* App.css */
 .App {
   text-align: center;
+  min-height: 100vh;
 }
 
-/* Custom scrollbar for sidebar */
-.MuiDrawer-paper::-webkit-scrollbar {
-  width: 6px;
+/* Global Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.MuiDrawer-paper::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
+.fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
 }
 
-.MuiDrawer-paper::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 3px;
+/* Staggered animation delays for lists/grids */
+.animate-child > * {
+  opacity: 0;
+  animation: fadeIn 0.5s ease-out forwards;
 }
 
-.MuiDrawer-paper::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
-}
+.animate-child > *:nth-child(1) { animation-delay: 0.1s; }
+.animate-child > *:nth-child(2) { animation-delay: 0.2s; }
+.animate-child > *:nth-child(3) { animation-delay: 0.3s; }
+.animate-child > *:nth-child(4) { animation-delay: 0.4s; }
+.animate-child > *:nth-child(5) { animation-delay: 0.5s; }
+.animate-child > *:nth-child(6) { animation-delay: 0.6s; }
+.animate-child > *:nth-child(7) { animation-delay: 0.7s; }
+.animate-child > *:nth-child(8) { animation-delay: 0.8s; }
 
-/* Custom card hover effects */
+/* Refined Card Hover Effect */
 .MuiCard-root {
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .MuiCard-root:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.15) !important;
 }
 
-/* Smooth transitions for buttons */
-.MuiButton-root {
-  transition: all 0.2s ease-in-out;
+/* Glassmorphism utilities */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
-/* Search input styling */
-.MuiInputBase-input::placeholder {
-  color: rgba(0, 0, 0, 0.6);
-}
