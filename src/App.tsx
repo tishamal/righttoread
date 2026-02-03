@@ -5,7 +5,8 @@ import GenerateImagesModal from './components/GenerateImagesModal';
 import Login from './components/Login';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import DigitalVersionReview from './components/DigitalVersionReview';
-import { booksAPI, ttsAPI } from './services/api';
+import { booksAPI, ttsAPI, analyticsAPI } from './services/api';
+import { OverviewStats, SchoolMetrics } from './types/analytics';
 import {
   Box,
   CssBaseline,
@@ -209,6 +210,9 @@ function App() {
     severity: 'info',
   });
 
+  const [overviewStats, setOverviewStats] = useState<OverviewStats | null>(null);
+  const [activeSchools, setActiveSchools] = useState<SchoolMetrics[]>([]);
+
   const navigationItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, id: 'Dashboard' },
     { text: 'Analytics', icon: <AnalyticsIcon />, id: 'Analytics' },
@@ -221,8 +225,25 @@ function App() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchBooks();
+      fetchDashboardStats();
+      // Set up auto-refresh for dashboard stats every 5 minutes
+      const interval = setInterval(fetchDashboardStats, 5 * 60 * 1000);
+      return () => clearInterval(interval);
     }
   }, [isAuthenticated]);
+
+  const fetchDashboardStats = async () => {
+    try {
+      const [stats, schools] = await Promise.all([
+        analyticsAPI.getOverviewStats(),
+        analyticsAPI.getSchoolsStats({ limit: 6, sortBy: 'active' })
+      ]);
+      setOverviewStats(stats);
+      setActiveSchools(schools);
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+    }
+  };
 
   const fetchBooks = async () => {
     try {
@@ -394,8 +415,8 @@ function App() {
       case 'Dashboard':
       default:
         return (
-          <>
-            <Box sx={{ mb: 4 }}>
+          <Box className="fade-in">
+            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h4" fontWeight="bold" gutterBottom>
                 Dashboard
               </Typography>
@@ -424,7 +445,7 @@ function App() {
             {/* Statistics Cards */}
             <Grid container spacing={3} sx={{ mb: 4 }}>
               <Grid item xs={12} sm={6} md={6}>
-                <Paper sx={{ p: 3, textAlign: 'center', bgcolor: '#e3f2fd' }}>
+                <Paper sx={{ p: 3, textAlign: 'center', bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1), borderRadius: 4 }}>
                   <Typography variant="h4" fontWeight="bold" color="primary">
                     {totalBooks}
                   </Typography>
@@ -434,9 +455,9 @@ function App() {
                 </Paper>
               </Grid>
               <Grid item xs={12} sm={6} md={6}>
-                <Paper sx={{ p: 3, textAlign: 'center', bgcolor: '#f3e5f5' }}>
+                <Paper sx={{ p: 3, textAlign: 'center', bgcolor: (theme) => alpha(theme.palette.secondary.main, 0.1), borderRadius: 4 }}>
                   <Typography variant="h4" fontWeight="bold" color="secondary.main">
-                    24
+                    {overviewStats?.totalActiveSchools || 0}
                   </Typography>
                   <Typography variant="body2" color="textSecondary">
                     Schools Using
@@ -451,24 +472,31 @@ function App() {
                 Schools Using Right to Read
               </Typography>
               <Grid container spacing={2}>
-                {['Colombo High School', 'Royal College Colombo', 'Ananda College', 
-                  'St. Thomas\' College', 'Wesley College', 'Nalanda College'].map((school, index) => (
-                  <Grid item xs={12} sm={6} md={4} key={index}>
-                    <Paper sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Avatar sx={{ width: 48, height: 48, bgcolor: 'primary.main' }}>
-                        {school.charAt(0)}
-                      </Avatar>
-                      <Box>
-                        <Typography variant="body1" fontWeight="medium">
-                          {school}
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          Active since 2024
-                        </Typography>
-                      </Box>
-                    </Paper>
+                {activeSchools.length > 0 ? (
+                  activeSchools.map((school, index) => (
+                    <Grid item xs={12} sm={6} md={4} key={index}>
+                      <Paper sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Avatar sx={{ width: 48, height: 48, bgcolor: 'primary.main' }}>
+                          {school.schoolName.charAt(0)}
+                        </Avatar>
+                        <Box>
+                          <Typography variant="body1" fontWeight="medium">
+                            {school.schoolName}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {school.isActive ? 'Active Now' : `Last active: ${new Date(school.lastSyncTime).toLocaleDateString()}`}
+                          </Typography>
+                        </Box>
+                      </Paper>
+                    </Grid>
+                  ))
+                ) : (
+                  <Grid item xs={12}>
+                    <Typography color="textSecondary" align="center">
+                      No active schools data available yet.
+                    </Typography>
                   </Grid>
-                ))}
+                )}
               </Grid>
             </Box>
 
@@ -505,7 +533,7 @@ function App() {
             </Box>
 
             {/* Books Grid */}
-            <Grid container spacing={3}>
+            <Grid container spacing={3} className="animate-child">
               {filteredBooks.map((book) => (
                 <Grid item xs={12} sm={6} md={4} lg={3} key={book.id}>
                   <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -541,7 +569,7 @@ function App() {
                 </Grid>
               ))}
             </Grid>
-          </>
+          </Box>
         );
     }
   };
@@ -556,9 +584,6 @@ function App() {
         sx={{
           width: `calc(100% - ${drawerWidth}px)`,
           ml: `${drawerWidth}px`,
-          backgroundColor: 'white',
-          color: 'black',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
         }}
       >
         <Toolbar>
@@ -597,8 +622,6 @@ function App() {
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
-            backgroundColor: '#1976d2',
-            color: 'white',
           },
         }}
         variant="permanent"
@@ -618,18 +641,29 @@ function App() {
                 selected={currentPage === item.id}
                 onClick={() => setCurrentPage(item.id)}
                 sx={{
+                  mx: 1,
+                  my: 0.5,
+                  borderRadius: 2,
                   '&.Mui-selected': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    backgroundColor: 'primary.main',
+                    color: 'white',
+                    '&:hover': {
+                      backgroundColor: 'primary.dark',
+                    },
+                    '& .MuiListItemIcon-root': {
+                      color: 'white',
+                    },
                   },
                   '&:hover': {
                     backgroundColor: 'rgba(255, 255, 255, 0.05)',
                   },
+                  transition: 'background-color 0.2s',
                 }}
               >
-                <ListItemIcon sx={{ color: 'white' }}>
+                <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>
                   {item.icon}
                 </ListItemIcon>
-                <ListItemText primary={item.text} />
+                <ListItemText primary={item.text} primaryTypographyProps={{ fontWeight: 500 }} />
               </ListItemButton>
             </ListItem>
           ))}
@@ -641,9 +675,9 @@ function App() {
         component="main"
         sx={{
           flexGrow: 1,
-          bgcolor: '#f5f5f5',
           p: 3,
           minHeight: '100vh',
+          backgroundColor: 'background.default',
         }}
       >
         <Toolbar />
