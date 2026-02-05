@@ -351,20 +351,67 @@ const DigitalVersionReview: React.FC = () => {
   );
 
   useEffect(() => {
+    // Restore state from localStorage on mount
+    const restoreState = async () => {
+      const savedBookId = localStorage.getItem('review_selectedBookId');
+      const savedPageIndex = localStorage.getItem('review_pageIndex');
+      
+      if (savedBookId) {
+        try {
+          // If we have a saved book ID, try to restore the view
+          // We call fetchBookDetails directly with the ID
+          const details = await ttsAPI.getBookDetails(savedBookId);
+          if (details && details.book) {
+            setBookDetails(details);
+            setSelectedBook(details.book);
+            
+            if (savedPageIndex) {
+              const pageIndex = parseInt(savedPageIndex);
+              if (!isNaN(pageIndex) && pageIndex >= 0 && pageIndex < (details.pages?.length || 0)) {
+                setCurrentPageIndex(pageIndex);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Failed to restore review state:', error);
+          // If restore fails, clear storage to prevent stuck state
+          localStorage.removeItem('review_selectedBookId');
+          localStorage.removeItem('review_pageIndex');
+        }
+      }
+    };
+    
+    restoreState();
+  }, []); // Only run on mount
+
+  useEffect(() => {
     fetchBooks();
   }, [statusFilter, gradeFilter]);
 
+  // Save state when selectedBook changes
   useEffect(() => {
     if (selectedBook) {
-      fetchBookDetails(selectedBook.id);
+      localStorage.setItem('review_selectedBookId', selectedBook.id.toString());
+      // Also ensure detail view matches if switching books
+      if (!bookDetails || bookDetails.book.id !== selectedBook.id) {
+         fetchBookDetails(selectedBook.id);
+      }
+    } else {
+      localStorage.removeItem('review_selectedBookId');
+      localStorage.removeItem('review_pageIndex');
     }
   }, [selectedBook]);
 
+  // Save state when page index changes
   useEffect(() => {
+    localStorage.setItem('review_pageIndex', currentPageIndex.toString());
+    
+    // Original logic to load page data
     if (bookDetails && bookDetails.pages.length > 0) {
       loadPageData(currentPageIndex);
     }
   }, [bookDetails, currentPageIndex]);
+
 
   const fetchBooks = async () => {
     try {
@@ -392,6 +439,12 @@ const DigitalVersionReview: React.FC = () => {
       setLoadingPage(true);
       const details = await ttsAPI.getBookDetails(bookId);
       setBookDetails(details);
+      
+      // Update selectedBook with latest details to ensure status is current
+      if (details?.book) {
+        setSelectedBook(details.book);
+      }
+      
       setCurrentPageIndex(0);
     } catch (error) {
       console.error('Error fetching book details:', error);
@@ -444,7 +497,9 @@ const DigitalVersionReview: React.FC = () => {
           // Use proxy endpoint to avoid CORS issues
           // Fallback to /api if env var is missing (for hosted environment behind Nginx)
           const baseUrl = process.env.REACT_APP_TTS_SERVICE_URL || '/api';
-          const proxyUrl = `${baseUrl}/s3-proxy?s3_key=${encodeURIComponent(blocksKey)}`;
+          // Add timestamp to prevent caching of old block data
+          const timestamp = new Date().getTime();
+          const proxyUrl = `${baseUrl}/s3-proxy?s3_key=${encodeURIComponent(blocksKey)}&t=${timestamp}`;
           console.log('Using proxy URL:', proxyUrl);
           
           const response = await fetch(proxyUrl);
@@ -607,6 +662,7 @@ const DigitalVersionReview: React.FC = () => {
     setSelectedBook(book);
     setTabValue(0);
     setPlayingBlockId(null);
+    setCurrentPageIndex(0); // Reset to first page when selecting a new book manually
   };
 
   const handleNextPage = () => {
@@ -794,6 +850,41 @@ const DigitalVersionReview: React.FC = () => {
     }
   };
 
+  const handleApprovePage = async () => {
+    if (!selectedBook || !bookDetails) return;
+
+    const currentPage = bookDetails.pages[currentPageIndex];
+    if (!currentPage) return;
+
+    try {
+      setLoadingPage(true);
+      const response = await ttsAPI.approvePage(selectedBook.id, currentPage.id);
+      
+      const isBookApproved = response.data?.book_approved;
+      
+      setSnackbar({
+        open: true,
+        message: isBookApproved 
+          ? 'Page approved. Book auto-approved as all pages are complete!' 
+          : 'Page approved successfully',
+        severity: 'success',
+      });
+
+      // reload the page to reflect changes
+      window.location.reload();
+
+    } catch (error) {
+      console.error('Error approving page:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to approve page',
+        severity: 'error',
+      });
+    } finally {
+      setLoadingPage(false);
+    }
+  };
+
   const handleRegeneratePage = async () => {
     if (!selectedBook || !bookDetails) return;
 
@@ -921,8 +1012,9 @@ const DigitalVersionReview: React.FC = () => {
         severity: 'success',
       });
 
-      // Reload page data to reflect changes
-      await loadPageData(currentPageIndex);
+      // Refresh book details to get updated S3 keys and metadata
+      // This will trigger the useEffect to reload page data automatically
+      await fetchBookDetails(selectedBook.id);
 
     } catch (error) {
       console.error('Error updating page:', error);
@@ -1110,11 +1202,11 @@ const DigitalVersionReview: React.FC = () => {
                   variant="contained"
                   size="small"
                   startIcon={<CheckCircle />}
-                  onClick={handleOpenApproveDialog}
-                  disabled={!bookDetails}
+                  onClick={() => setApproveDialogOpen(true)}
+                  disabled={!bookDetails || selectedBook.processing_status === 'approved'}
                   color="success"
                 >
-                  Approve Book
+                  {selectedBook.processing_status === 'approved' ? 'Book Approved' : 'Approve Book'}
                 </Button>
                 <Button
                   variant="outlined"
@@ -1391,22 +1483,17 @@ const DigitalVersionReview: React.FC = () => {
                         variant="contained"
                         color="success"
                         startIcon={<CheckCircle />}
-                        onClick={() => {
-                          setSnackbar({
-                            open: true,
-                            message: `Page ${bookDetails?.pages[currentPageIndex]?.page_number} approved`,
-                            severity: 'success',
-                          });
-                        }}
+                        onClick={handleApprovePage}
+                        disabled={!bookDetails || bookDetails.pages[currentPageIndex]?.status === 'approved' || loadingPage}
                       >
-                        Approve Page
+                        {bookDetails?.pages[currentPageIndex]?.status === 'approved' ? 'Approved' : 'Approve Page'}
                       </Button>
                       <Button
                         variant="outlined"
                         color="warning"
                         startIcon={<Refresh />}
                         onClick={handleRegeneratePage}
-                        disabled={loadingPage}
+                        disabled={loadingPage || bookDetails?.pages[currentPageIndex]?.status === 'approved'}
                       >
                         {loadingPage ? 'Updating...' : 'Update & Save Page'}
                       </Button>

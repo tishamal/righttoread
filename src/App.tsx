@@ -193,12 +193,18 @@ const sampleBooks = [
 
 function App() {
   const [selectedGrade, setSelectedGrade] = useState('All Grades');
-  const [currentPage, setCurrentPage] = useState('Dashboard');
+  const [currentPage, setCurrentPage] = useState(() => {
+    return localStorage.getItem('activePage') || 'Dashboard';
+  });
   const [addBookModalOpen, setAddBookModalOpen] = useState(false);
   const [generateImagesModalOpen, setGenerateImagesModalOpen] = useState(false);
   const [books, setBooks] = useState<Book[]>(sampleBooks);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState<string>('');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('isAuthenticated') === 'true';
+  });
+  const [currentUser, setCurrentUser] = useState<string>(() => {
+    return localStorage.getItem('currentUser') || '';
+  });
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{
     open: boolean;
@@ -381,6 +387,8 @@ function App() {
     if (email && password) {
       setIsAuthenticated(true);
       setCurrentUser(email);
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('currentUser', email);
       console.log('User logged in:', email);
     }
   };
@@ -389,6 +397,8 @@ function App() {
     setIsAuthenticated(false);
     setCurrentUser('');
     setCurrentPage('Dashboard');
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('currentUser');
   };
 
   const filteredBooks = selectedGrade === 'All Grades' 
@@ -639,7 +649,10 @@ function App() {
             <ListItem key={item.id} disablePadding>
               <ListItemButton
                 selected={currentPage === item.id}
-                onClick={() => setCurrentPage(item.id)}
+                onClick={() => {
+                  setCurrentPage(item.id);
+                  localStorage.setItem('activePage', item.id);
+                }}
                 sx={{
                   mx: 1,
                   my: 0.5,

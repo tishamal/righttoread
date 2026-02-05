@@ -391,6 +391,16 @@ export const ttsAPI = {
       throw error;
     }
   },
+
+  async approvePage(bookId: string | number, pageId: number): Promise<any> {
+    try {
+      const data = await httpClient.post<any>(API_ENDPOINTS.tts.approvePage(bookId, pageId), {});
+      return data;
+    } catch (error) {
+      console.error('Error approving page:', error);
+      throw error;
+    }
+  },
 };
 
 export interface PendingBook {
