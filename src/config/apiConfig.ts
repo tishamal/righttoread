@@ -47,6 +47,8 @@ export const API_ENDPOINTS = {
     reviewStatus: (bookId: string | number) => `${TTS_SERVICE_URL}/books/${bookId}/review_status`,
     updateBlocks: (bookId: string | number, pageNumber: number) => 
       `${TTS_SERVICE_URL}/books/${bookId}/pages/${pageNumber}/update-blocks`,
+    approvePage: (bookId: string | number, pageId: number) => 
+      `${TTS_SERVICE_URL}/digital-review/books/${bookId}/pages/${pageId}/approve`,
   },
 };
 

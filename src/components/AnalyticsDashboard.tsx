@@ -77,6 +77,7 @@ import {
   getGradeColor,
   exportToCSV,
   convertMsToHours,
+  convertMsToMinutes,
 } from '../utils/analyticsHelpers';
 
 
@@ -388,7 +389,7 @@ const AnalyticsDashboard: React.FC = () => {
 
       {/* Stats Cards */}
       <Grid container spacing={3} mb={4}>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
+        <Grid item xs={12} sm={6} md={4} lg>
           <StatCard
             title="Active Schools"
             value={overviewStats?.totalActiveSchools || 0}
@@ -397,7 +398,7 @@ const AnalyticsDashboard: React.FC = () => {
             loading={loading}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
+        <Grid item xs={12} sm={6} md={4} lg>
           <StatCard
             title="Total Reading Time"
             value={formatReadingTime(overviewStats?.totalReadingTimeMs || 0)}
@@ -406,15 +407,8 @@ const AnalyticsDashboard: React.FC = () => {
             loading={loading}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <StatCard
-            title="Books Accessed"
-            value={overviewStats?.totalBooks || 0}
-            icon={<BookIcon />}
-            loading={loading}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
+
+        <Grid item xs={12} sm={6} md={4} lg>
           <StatCard
             title="Total Records"
             value={formatLargeNumber(overviewStats?.totalRecords || 0)}
@@ -423,7 +417,7 @@ const AnalyticsDashboard: React.FC = () => {
             loading={loading}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
+        <Grid item xs={12} sm={6} md={4} lg>
           <StatCard
             title="Avg Session"
             value={`${avgSessionDuration}m`}
@@ -431,7 +425,7 @@ const AnalyticsDashboard: React.FC = () => {
             loading={loading}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
+        <Grid item xs={12} sm={6} md={4} lg>
           <StatCard
             title="Sync Success Rate"
             value={`${syncSuccessRate}%`}
@@ -605,7 +599,7 @@ const AnalyticsDashboard: React.FC = () => {
                       <TableRow>
                         <TableCell>School Name</TableCell>
                         <TableCell>Serial Number</TableCell>
-                        <TableCell align="right">Reading Time</TableCell>
+                        <TableCell align="right">Reading Time (min)</TableCell>
                         <TableCell align="right">Books Accessed</TableCell>
                         <TableCell align="right">Total Records</TableCell>
                         <TableCell>Last Sync</TableCell>
@@ -620,7 +614,7 @@ const AnalyticsDashboard: React.FC = () => {
                             <TableCell>{school.schoolName}</TableCell>
                             <TableCell>{school.serialNumber}</TableCell>
                             <TableCell align="right">
-                              {formatReadingTime(school.totalReadingTimeMs)}
+                              {convertMsToMinutes(school.totalReadingTimeMs)}
                             </TableCell>
                             <TableCell align="right">{school.totalBooksAccessed}</TableCell>
                             <TableCell align="right">{school.totalRecords}</TableCell>
