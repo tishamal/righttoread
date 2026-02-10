@@ -485,7 +485,7 @@ function App() {
                 {activeSchools.length > 0 ? (
                   activeSchools.map((school, index) => (
                     <Grid item xs={12} sm={6} md={4} key={index}>
-                      <Paper sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Paper sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, height: '100%' }}>
                         <Avatar sx={{ width: 48, height: 48, bgcolor: 'primary.main' }}>
                           {school.schoolName.charAt(0)}
                         </Avatar>

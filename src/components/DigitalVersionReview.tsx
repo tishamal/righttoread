@@ -966,44 +966,23 @@ const DigitalVersionReview: React.FC = () => {
 
       console.log('Updating page with changes:', userChanges);
 
-      // Step 3: Update blocks with Bedrock
-      const updateResponse = await fetch(
-        `${baseUrl}/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/update-blocks`,
+      // Step 3: Regenerate page (Merge + Audio + Save)
+      const regenerateResponse = await fetch(
+        `${baseUrl}/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/regenerate-page`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             original_blocks: originalBlocks,
             user_changes: userChanges,
-          }),
-        }
-      );
-
-      if (!updateResponse.ok) {
-        const errorData = await updateResponse.json();
-        throw new Error(errorData.detail || 'Failed to update blocks');
-      }
-
-      const updateData = await updateResponse.json();
-      const updatedBlocks = updateData.data.updated_blocks;
-
-      // Step 4: Save changes (generate audio + upload to S3 + update DB)
-      const saveResponse = await fetch(
-        `${baseUrl}/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/save-changes`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            updated_blocks: updatedBlocks,
             audio_speed: audioSpeed,
-            version_notes: `Updated via digital review: ${Object.keys(userChanges).join(', ')}`,
           }),
         }
       );
 
-      if (!saveResponse.ok) {
-        const errorData = await saveResponse.json();
-        throw new Error(errorData.detail || 'Failed to save changes');
+      if (!regenerateResponse.ok) {
+        const errorData = await regenerateResponse.json();
+        throw new Error(errorData.detail || 'Failed to regenerate page');
       }
 
       setSnackbar({
