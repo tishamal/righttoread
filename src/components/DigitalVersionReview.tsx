@@ -517,9 +517,21 @@ const DigitalVersionReview: React.FC = () => {
             blocksArray = blocksData.tts_blocks;
           } else if (typeof blocksData === 'object') {
             // Object with numeric keys: { "0": block1, "1": block2, ... }
+            // Sort by sequence_index if available, otherwise by block ID
             blocksArray = Object.keys(blocksData)
-              .sort((a, b) => parseInt(a) - parseInt(b))
-              .map(key => ({ ...blocksData[key], blockNumber: key }));
+              .map(key => ({ ...blocksData[key], blockNumber: key }))
+              .sort((a, b) => {
+                // Check for sequence_index (primary sort key)
+                const seqA = a.sequence_index ?? a.sequenceIndex;
+                const seqB = b.sequence_index ?? b.sequenceIndex;
+                
+                if (seqA !== undefined && seqB !== undefined) {
+                  return seqA - seqB;
+                }
+                
+                // Fallback to numeric key sort
+                return parseInt(a.blockNumber) - parseInt(b.blockNumber);
+              });
           }
           
           // Convert blocks data to our format
@@ -921,7 +933,27 @@ const DigitalVersionReview: React.FC = () => {
         return block?.audioBlockId || blockId.replace('_normal', '').replace('_slow', '');
       });
 
-      const originalBlockIds = Object.keys(originalBlocks);
+      // Calculate the effective order of the original blocks based on sequence_index
+      // This ensures we detect changes even if the user is reverting to 0, 1, 2 order
+      const originalBlockIds = Object.keys(originalBlocks).sort((a, b) => {
+        const blockA = originalBlocks[a];
+        const blockB = originalBlocks[b];
+        const seqA = blockA.sequence_index ?? blockA.sequenceIndex;
+        const seqB = blockB.sequence_index ?? blockB.sequenceIndex;
+        
+        if (seqA !== undefined && seqB !== undefined) {
+          return seqA - seqB;
+        }
+        
+        // Fallback to numeric key sort logic (handling strings as numbers)
+        return parseInt(a) - parseInt(b);
+      });
+
+      console.log('Change Detection:', {
+        currentUserOrder: reorderedBlockIds,
+        originalS3Order: originalBlockIds
+      });
+
       if (JSON.stringify(reorderedBlockIds) !== JSON.stringify(originalBlockIds)) {
         userChanges.reordered_block_ids = reorderedBlockIds;
       }
@@ -966,44 +998,23 @@ const DigitalVersionReview: React.FC = () => {
 
       console.log('Updating page with changes:', userChanges);
 
-      // Step 3: Update blocks with Bedrock
-      const updateResponse = await fetch(
-        `${baseUrl}/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/update-blocks`,
+      // Step 3: Regenerate page (Merge + Audio + Save)
+      const regenerateResponse = await fetch(
+        `${baseUrl}/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/regenerate-page`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             original_blocks: originalBlocks,
             user_changes: userChanges,
-          }),
-        }
-      );
-
-      if (!updateResponse.ok) {
-        const errorData = await updateResponse.json();
-        throw new Error(errorData.detail || 'Failed to update blocks');
-      }
-
-      const updateData = await updateResponse.json();
-      const updatedBlocks = updateData.data.updated_blocks;
-
-      // Step 4: Save changes (generate audio + upload to S3 + update DB)
-      const saveResponse = await fetch(
-        `${baseUrl}/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/save-changes`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            updated_blocks: updatedBlocks,
             audio_speed: audioSpeed,
-            version_notes: `Updated via digital review: ${Object.keys(userChanges).join(', ')}`,
           }),
         }
       );
 
-      if (!saveResponse.ok) {
-        const errorData = await saveResponse.json();
-        throw new Error(errorData.detail || 'Failed to save changes');
+      if (!regenerateResponse.ok) {
+        const errorData = await regenerateResponse.json();
+        throw new Error(errorData.detail || 'Failed to regenerate page');
       }
 
       setSnackbar({
