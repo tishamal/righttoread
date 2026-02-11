@@ -517,9 +517,21 @@ const DigitalVersionReview: React.FC = () => {
             blocksArray = blocksData.tts_blocks;
           } else if (typeof blocksData === 'object') {
             // Object with numeric keys: { "0": block1, "1": block2, ... }
+            // Sort by sequence_index if available, otherwise by block ID
             blocksArray = Object.keys(blocksData)
-              .sort((a, b) => parseInt(a) - parseInt(b))
-              .map(key => ({ ...blocksData[key], blockNumber: key }));
+              .map(key => ({ ...blocksData[key], blockNumber: key }))
+              .sort((a, b) => {
+                // Check for sequence_index (primary sort key)
+                const seqA = a.sequence_index ?? a.sequenceIndex;
+                const seqB = b.sequence_index ?? b.sequenceIndex;
+                
+                if (seqA !== undefined && seqB !== undefined) {
+                  return seqA - seqB;
+                }
+                
+                // Fallback to numeric key sort
+                return parseInt(a.blockNumber) - parseInt(b.blockNumber);
+              });
           }
           
           // Convert blocks data to our format
@@ -921,7 +933,27 @@ const DigitalVersionReview: React.FC = () => {
         return block?.audioBlockId || blockId.replace('_normal', '').replace('_slow', '');
       });
 
-      const originalBlockIds = Object.keys(originalBlocks);
+      // Calculate the effective order of the original blocks based on sequence_index
+      // This ensures we detect changes even if the user is reverting to 0, 1, 2 order
+      const originalBlockIds = Object.keys(originalBlocks).sort((a, b) => {
+        const blockA = originalBlocks[a];
+        const blockB = originalBlocks[b];
+        const seqA = blockA.sequence_index ?? blockA.sequenceIndex;
+        const seqB = blockB.sequence_index ?? blockB.sequenceIndex;
+        
+        if (seqA !== undefined && seqB !== undefined) {
+          return seqA - seqB;
+        }
+        
+        // Fallback to numeric key sort logic (handling strings as numbers)
+        return parseInt(a) - parseInt(b);
+      });
+
+      console.log('Change Detection:', {
+        currentUserOrder: reorderedBlockIds,
+        originalS3Order: originalBlockIds
+      });
+
       if (JSON.stringify(reorderedBlockIds) !== JSON.stringify(originalBlockIds)) {
         userChanges.reordered_block_ids = reorderedBlockIds;
       }
