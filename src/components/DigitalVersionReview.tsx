@@ -40,6 +40,7 @@ import {
   ExpandMore,
   DragIndicator,
   Refresh,
+  Delete,
 } from '@mui/icons-material';
 import {
   DndContext,
@@ -132,6 +133,7 @@ interface SortableBlockItemProps {
   onPlay: () => void;
   onSsmlChange: (value: string) => void;
   onVoiceChange: (value: string) => void;
+  onDelete: () => void;
 }
 
 const SortableBlockItem: React.FC<SortableBlockItemProps> = ({
@@ -146,6 +148,7 @@ const SortableBlockItem: React.FC<SortableBlockItemProps> = ({
   onPlay,
   onSsmlChange,
   onVoiceChange,
+  onDelete,
 }) => {
   const {
     attributes,
@@ -268,6 +271,21 @@ const SortableBlockItem: React.FC<SortableBlockItemProps> = ({
               {isPlaying ? <Pause /> : <PlayArrow />}
             </IconButton>
           </Tooltip>
+          
+          <Tooltip title="Delete Block">
+            <IconButton
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              color="error"
+              size="small"
+              sx={{ ml: 1 }}
+            >
+              <Delete />
+            </IconButton>
+          </Tooltip>
+          
           <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
             {audioSpeed === 'normal' ? 'Normal' : 'Slow'}
           </Typography>
@@ -341,6 +359,10 @@ const DigitalVersionReview: React.FC = () => {
   // Approval dialog states
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [approvalNotes, setApprovalNotes] = useState('');
+
+  // Delete Block Dialog State
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [blockToDelete, setBlockToDelete] = useState<string | null>(null);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -825,6 +847,53 @@ const DigitalVersionReview: React.FC = () => {
         message: `Block moved from position ${oldIndex} to position ${newIndex}. Blocks renumbered in ascending order!`,
         severity: 'info',
       });
+    }
+  };
+
+  const handleDeleteClick = (blockId: string) => {
+    setBlockToDelete(blockId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedBook || !bookDetails || !blockToDelete) return;
+
+    if (currentPageIndex >= bookDetails.pages.length) return;
+    const currentPage = bookDetails.pages[currentPageIndex];
+    if (!currentPage) return;
+
+    try {
+      setLoadingPage(true);
+      
+      const currentBlocks = audioSpeed === 'slow' ? currentPageData.slowBlocks : currentPageData.normalBlocks;
+      const block = currentBlocks.find(b => b.id === blockToDelete);
+      
+      // Get the simple block ID (e.g. "5")
+      // Extract block ID from block object or parse from ID string: block_{page}_{id}_{type}
+      const simpleBlockId = block?.audioBlockId || block?.blockNumber?.toString() || blockToDelete.split('_')[2];
+      
+      await ttsAPI.deleteBlock(selectedBook.id, currentPage.id, simpleBlockId, audioSpeed);
+      
+      setSnackbar({
+        open: true,
+        message: 'Block deleted successfully',
+        severity: 'success',
+      });
+      
+      setDeleteDialogOpen(false);
+      setBlockToDelete(null);
+
+      // Reload page data
+      await loadPageData(currentPageIndex);
+      
+    } catch (error) {
+      console.error('Error deleting block:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to delete block',
+        severity: 'error',
+      });
+      setLoadingPage(false);
     }
   };
 
@@ -1469,6 +1538,7 @@ const DigitalVersionReview: React.FC = () => {
                                 onPlay={() => handlePlayBlock(block.id, block.audioBlockId)}
                                 onSsmlChange={(value) => handleSsmlChange(block.id, value)}
                                 onVoiceChange={(value) => handleVoiceChange(block.id, value)}
+                                onDelete={() => handleDeleteClick(block.id)}
                               />
                             ))}
                           </SortableContext>
@@ -1566,6 +1636,39 @@ const DigitalVersionReview: React.FC = () => {
             startIcon={<CheckCircle />}
           >
             Confirm Approval
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Block Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Delete color="error" />
+          Delete Block?
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Are you sure you want to delete this block? This action will remove the block from the text and marks the associated audio files as deleted.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDeleteDialogOpen(false)} color="inherit" disabled={loadingPage}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            variant="contained"
+            color="error"
+            startIcon={<Delete />}
+            autoFocus
+            disabled={loadingPage}
+          >
+            {loadingPage ? 'Deleting...' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>
