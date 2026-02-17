@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import AddBookModal from './components/AddBookModal';
-import GenerateImagesModal from './components/GenerateImagesModal';
 import Login from './components/Login';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import DigitalVersionReview from './components/DigitalVersionReview';
+import PictureDictionary from './components/PictureDictionary';
 import { booksAPI, ttsAPI, analyticsAPI } from './services/api';
 import { OverviewStats, SchoolMetrics } from './types/analytics';
 import {
@@ -48,10 +48,10 @@ import {
   Notifications as NotificationsIcon,
   FilterList as FilterIcon,
   Add as AddIcon,
-  AutoAwesome as MagicIcon,
   MenuBook as BookIcon,
   Equalizer as AnalyticsIcon,
   Audiotrack as AudioIcon,
+  Collections as DictionaryIcon,
 } from '@mui/icons-material';
 import { styled, alpha } from '@mui/material/styles';
 
@@ -197,7 +197,6 @@ function App() {
     return localStorage.getItem('activePage') || 'Dashboard';
   });
   const [addBookModalOpen, setAddBookModalOpen] = useState(false);
-  const [generateImagesModalOpen, setGenerateImagesModalOpen] = useState(false);
   const [books, setBooks] = useState<Book[]>(sampleBooks);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return localStorage.getItem('isAuthenticated') === 'true';
@@ -223,6 +222,7 @@ function App() {
     { text: 'Dashboard', icon: <DashboardIcon />, id: 'Dashboard' },
     { text: 'Analytics', icon: <AnalyticsIcon />, id: 'Analytics' },
     { text: 'Digital Review', icon: <AudioIcon />, id: 'DigitalReview' },
+    { text: 'Picture Dictionary', icon: <DictionaryIcon />, id: 'PictureDictionary' },
     { text: 'Account', icon: <AccountIcon />, id: 'Account' },
     { text: 'Settings', icon: <SettingsIcon />, id: 'Settings' },
   ];
@@ -422,6 +422,12 @@ function App() {
         return <AnalyticsDashboard />;
       case 'DigitalReview':
         return <DigitalVersionReview />;
+      case 'PictureDictionary':
+        return (
+          <PictureDictionary
+            onShowNotification={(message, severity) => setUploadStatus({ open: true, message, severity })}
+          />
+        );
       case 'Dashboard':
       default:
         return (
@@ -522,14 +528,6 @@ function App() {
                   sx={{ textTransform: 'none' }}
                 >
                   Filter
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<MagicIcon />}
-                  sx={{ textTransform: 'none' }}
-                  onClick={() => setGenerateImagesModalOpen(true)}
-                >
-                  Generate Picture Dictionary
                 </Button>
                 <Button
                   variant="contained"
@@ -704,12 +702,6 @@ function App() {
           open={addBookModalOpen}
           onClose={() => setAddBookModalOpen(false)}
           onSave={handleAddBook}
-        />
-
-        <GenerateImagesModal
-          open={generateImagesModalOpen}
-          onClose={() => setGenerateImagesModalOpen(false)}
-          onSuccess={(message) => setUploadStatus({ open: true, message, severity: 'success' })}
         />
 
         {/* Upload Status Snackbar */}

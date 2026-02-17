@@ -453,11 +453,25 @@ export const imagesAPI = {
     }
 };
 
+// Picture Dictionary API
+export const pictureDictionaryAPI = {
+  async getAll(): Promise<{ word: string; imageUrl: string }[]> {
+    try {
+      const data = await httpClient.get<{ word: string; imageUrl: string }[]>(API_ENDPOINTS.dictionary.list);
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('Error fetching picture dictionary:', error);
+      throw error;
+    }
+  }
+};
+
 const api = {
   booksAPI,
   analyticsAPI,
   ttsAPI,
   imagesAPI,
+  pictureDictionaryAPI,
 };
 
 export default api;
