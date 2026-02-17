@@ -454,13 +454,66 @@ export const imagesAPI = {
 };
 
 // Picture Dictionary API
+const DICTIONARY_CACHE_KEY = 'picture_dictionary_cache';
+// Valid for 50 minutes (S3 presigned URLs expire in 60 mins)
+const CACHE_TTL_MS = 50 * 60 * 1000; 
+
 export const pictureDictionaryAPI = {
   async getAll(): Promise<{ word: string; imageUrl: string }[]> {
     try {
+      // Check cache first
+      const cached = localStorage.getItem(DICTIONARY_CACHE_KEY);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed && Array.isArray(parsed.data) && parsed.timestamp) {
+            // Check if cache is still valid
+            if (Date.now() - parsed.timestamp < CACHE_TTL_MS) {
+              return parsed.data;
+            }
+          }
+        } catch (e) {
+          // Invalid JSON in cache, ignore and fetch fresh data
+          localStorage.removeItem(DICTIONARY_CACHE_KEY);
+        }
+      }
+
+      // Fetch from API if cache miss or expired
       const data = await httpClient.get<{ word: string; imageUrl: string }[]>(API_ENDPOINTS.dictionary.list);
+      
+      // Update cache
+      if (Array.isArray(data)) {
+        localStorage.setItem(DICTIONARY_CACHE_KEY, JSON.stringify({
+          data,
+          timestamp: Date.now()
+        }));
+      }
+      
       return Array.isArray(data) ? data : [];
     } catch (error) {
       console.error('Error fetching picture dictionary:', error);
+      // Fallback to cache if network fails, even if expired (better than nothing)
+      const cached = localStorage.getItem(DICTIONARY_CACHE_KEY);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          return parsed.data || [];
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+      throw error;
+    }
+  },
+
+  async addWord(word: string): Promise<any> {
+    try {
+      const data = await httpClient.post<any>(API_ENDPOINTS.dictionary.addWord, { word });
+      // Invalidate cache immediately so the new word appears
+      localStorage.removeItem(DICTIONARY_CACHE_KEY);
+      return data;
+    } catch (error) {
+      console.error('Error adding word to picture dictionary:', error);
       throw error;
     }
   }

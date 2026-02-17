@@ -8,14 +8,14 @@ import {
   CardMedia,
   CardContent,
   Paper,
-  Chip,
-  Container,
   CircularProgress,
   TextField,
-  InputAdornment
+  InputAdornment,
+  Stack
 } from '@mui/material';
-import { AutoAwesome as MagicIcon, Image as ImageIcon, Search as SearchIcon } from '@mui/icons-material';
+import { AutoAwesome as MagicIcon, Image as ImageIcon, Search as SearchIcon, Add as AddIcon } from '@mui/icons-material';
 import GenerateImagesModal from './GenerateImagesModal';
+import AddWordModal from './AddWordModal';
 import { pictureDictionaryAPI } from '../services/api';
 
 interface PictureDictionaryProps {
@@ -29,6 +29,7 @@ interface DictionaryItem {
 
 const PictureDictionary: React.FC<PictureDictionaryProps> = ({ onShowNotification }) => {
   const [generateModalOpen, setGenerateModalOpen] = useState(false);
+  const [addWordModalOpen, setAddWordModalOpen] = useState(false);
   const [items, setItems] = useState<DictionaryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -84,15 +85,26 @@ const PictureDictionary: React.FC<PictureDictionaryProps> = ({ onShowNotificatio
             }}
             sx={{ width: 250 }}
           />
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<MagicIcon />}
-            sx={{ textTransform: 'none' }}
-            onClick={() => setGenerateModalOpen(true)}
-          >
-            Generate Picture Dictionary
-          </Button>
+          <Stack direction="row" spacing={2}>
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<AddIcon />}
+              sx={{ textTransform: 'none' }}
+              onClick={() => setAddWordModalOpen(true)}
+            >
+              Add New Word
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<MagicIcon />}
+              sx={{ textTransform: 'none' }}
+              onClick={() => setGenerateModalOpen(true)}
+            >
+              Generate Picture Dictionary
+            </Button>
+          </Stack>
         </Box>
       </Box>
 
@@ -146,6 +158,12 @@ const PictureDictionary: React.FC<PictureDictionaryProps> = ({ onShowNotificatio
       <GenerateImagesModal
         open={generateModalOpen}
         onClose={() => setGenerateModalOpen(false)}
+        onSuccess={handleGenerateSuccess}
+      />
+
+      <AddWordModal
+        open={addWordModalOpen}
+        onClose={() => setAddWordModalOpen(false)}
         onSuccess={handleGenerateSuccess}
       />
     </Box>

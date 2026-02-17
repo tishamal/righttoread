@@ -39,7 +39,8 @@ export const API_ENDPOINTS = {
   
   // Picture Dictionary
   dictionary: {
-    list: `${TTS_SERVICE_URL}/dictionary`
+    list: `${TTS_SERVICE_URL}/dictionary`,
+    addWord: `${TTS_SERVICE_URL}/dictionary/add`,
   },
 
   // TTS Service endpoints (Python FastAPI service)
