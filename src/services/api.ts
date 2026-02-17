@@ -401,6 +401,26 @@ export const ttsAPI = {
       throw error;
     }
   },
+
+  async deleteBlock(
+    bookId: string | number, 
+    pageId: number, 
+    blockId: string, 
+    audioSpeed: 'normal' | 'slow' = 'normal'
+  ): Promise<any> {
+    try {
+      // Use the same base URL logic as other TTS endpoints if possible, or construct carefully
+      // Based on DigitalVersionReview.tsx usage:
+      const baseUrl = process.env.REACT_APP_TTS_SERVICE_URL || '/api';
+      const url = `${baseUrl}/digital-review/books/${bookId}/pages/${pageId}/blocks/${encodeURIComponent(blockId)}?audio_speed=${audioSpeed}`;
+      
+      const data = await httpClient.delete<any>(url);
+      return data;
+    } catch (error) {
+      console.error('Error deleting block:', error);
+      throw error;
+    }
+  },
 };
 
 export interface PendingBook {
@@ -433,9 +453,11 @@ export const imagesAPI = {
     }
 };
 
-export default {
+const api = {
   booksAPI,
   analyticsAPI,
   ttsAPI,
   imagesAPI,
 };
+
+export default api;
