@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -335,6 +335,7 @@ const DigitalVersionReview: React.FC = () => {
     audioUrls: Record<string, string>;
   }>({ imageUrl: null, normalBlocks: [], slowBlocks: [], audioUrls: {} });
   const [playingBlockId, setPlayingBlockId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [audioSpeed, setAudioSpeed] = useState<'normal' | 'slow'>('normal');
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -714,6 +715,13 @@ const DigitalVersionReview: React.FC = () => {
   };
 
   const handlePlayBlock = (blockId: string, audioBlockId?: string) => {
+    // Helper to stop current audio
+    if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current = null;
+    }
+
     if (playingBlockId === blockId) {
       setPlayingBlockId(null);
     } else {
@@ -736,6 +744,8 @@ const DigitalVersionReview: React.FC = () => {
       
       if (audioUrl) {
         const audio = new Audio(audioUrl);
+        audioRef.current = audio;
+        
         audio.play().catch(err => {
           console.error('Error playing audio:', err);
           setSnackbar({
@@ -745,7 +755,10 @@ const DigitalVersionReview: React.FC = () => {
           });
         });
         
-        audio.onended = () => setPlayingBlockId(null);
+        audio.onended = () => {
+             setPlayingBlockId(null);
+             audioRef.current = null;
+        };
       } else {
         console.error('No audio URL found for key:', audioKey);
         setSnackbar({
