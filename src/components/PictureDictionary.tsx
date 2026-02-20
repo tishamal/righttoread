@@ -11,9 +11,11 @@ import {
   CircularProgress,
   TextField,
   InputAdornment,
-  Stack
+  Stack,
+  IconButton,
+  Tooltip
 } from '@mui/material';
-import { AutoAwesome as MagicIcon, Image as ImageIcon, Search as SearchIcon, Add as AddIcon } from '@mui/icons-material';
+import { AutoAwesome as MagicIcon, Image as ImageIcon, Search as SearchIcon, Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import GenerateImagesModal from './GenerateImagesModal';
 import AddWordModal from './AddWordModal';
 import { pictureDictionaryAPI } from '../services/api';
@@ -33,6 +35,9 @@ const PictureDictionary: React.FC<PictureDictionaryProps> = ({ onShowNotificatio
   const [items, setItems] = useState<DictionaryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // State for regeneration
+  const [regenerateWord, setRegenerateWord] = useState<string | null>(null);
 
   const fetchDictionary = async () => {
     setLoading(true);
@@ -56,6 +61,16 @@ const PictureDictionary: React.FC<PictureDictionaryProps> = ({ onShowNotificatio
     // Refresh the list after a delay to allow for some generation to potentially complete
     // or just to refresh in case existing items were updated
     setTimeout(fetchDictionary, 2000);
+  };
+
+  const handleRegenerateClick = (word: string) => {
+    setRegenerateWord(word);
+    setAddWordModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setAddWordModalOpen(false);
+    setRegenerateWord(null);
   };
 
   const filteredItems = items.filter(item => 
@@ -116,7 +131,18 @@ const PictureDictionary: React.FC<PictureDictionaryProps> = ({ onShowNotificatio
         <Grid container spacing={3}>
           {filteredItems.map((item, index) => (
             <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.02)' } }}>
+              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.02)' }, position: 'relative' }}>
+                <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1, bgcolor: 'rgba(255,255,255,0.8)', borderRadius: '50%' }}>
+                  <Tooltip title="Regenerate Image">
+                    <IconButton 
+                      size="small" 
+                      onClick={() => handleRegenerateClick(item.word)}
+                      color="primary"
+                    >
+                      <RefreshIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
                 <CardMedia
                   component="img"
                   height="250"
@@ -163,8 +189,10 @@ const PictureDictionary: React.FC<PictureDictionaryProps> = ({ onShowNotificatio
 
       <AddWordModal
         open={addWordModalOpen}
-        onClose={() => setAddWordModalOpen(false)}
+        onClose={handleModalClose}
         onSuccess={handleGenerateSuccess}
+        initialWord={regenerateWord || ''}
+        isRegenerating={!!regenerateWord}
       />
     </Box>
   );

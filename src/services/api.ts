@@ -506,11 +506,17 @@ export const pictureDictionaryAPI = {
     }
   },
 
-  async addWord(word: string): Promise<any> {
+  async addWord(word: string, description?: string, forceRegenerate: boolean = false): Promise<any> {
     try {
-      const data = await httpClient.post<any>(API_ENDPOINTS.dictionary.addWord, { word });
+      const data = await httpClient.post<any>(API_ENDPOINTS.dictionary.addWord, { 
+        word, 
+        description,
+        force_regenerate: forceRegenerate
+      });
       // Invalidate cache immediately so the new word appears
       localStorage.removeItem(DICTIONARY_CACHE_KEY);
+      // Also clear the http client internal cache to ensure we fetch fresh data
+      httpClient.clearCache();
       return data;
     } catch (error) {
       console.error('Error adding word to picture dictionary:', error);
