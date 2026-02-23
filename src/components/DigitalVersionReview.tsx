@@ -458,7 +458,7 @@ const DigitalVersionReview: React.FC = () => {
     }
   };
 
-  const fetchBookDetails = async (bookId: number) => {
+  const fetchBookDetails = async (bookId: number, preservePage: boolean = false) => {
     try {
       setLoadingPage(true);
       const details = await ttsAPI.getBookDetails(bookId);
@@ -469,7 +469,9 @@ const DigitalVersionReview: React.FC = () => {
         setSelectedBook(details.book);
       }
       
-      setCurrentPageIndex(0);
+      if (!preservePage) {
+        setCurrentPageIndex(0);
+      }
     } catch (error) {
       console.error('Error fetching book details:', error);
       setSnackbar({
@@ -1128,7 +1130,7 @@ const DigitalVersionReview: React.FC = () => {
 
       // Refresh book details to get updated S3 keys and metadata
       // This will trigger the useEffect to reload page data automatically
-      await fetchBookDetails(selectedBook.id);
+      await fetchBookDetails(selectedBook.id, true);
 
     } catch (error) {
       console.error('Error updating page:', error);
@@ -1316,7 +1318,7 @@ const DigitalVersionReview: React.FC = () => {
                   <TextField
                     size="small"
                     variant="outlined"
-                    placeholder="#"
+                    placeholder="Page No."
                     value={targetPageInput}
                     onChange={(e) => setTargetPageInput(e.target.value)}
                     onKeyPress={(e) => {
