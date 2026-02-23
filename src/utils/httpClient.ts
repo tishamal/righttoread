@@ -183,6 +183,17 @@ class HttpClient {
   clearCache() {
     this.cache.clear();
   }
+
+  removeCache(url: string) {
+    // Exact match removal. Could be improved to remove by pattern.
+    // Also need to consider how getCacheKey generates keys. It includes options for some reason
+    // but here we might just delete keys starting with url
+    Array.from(this.cache.keys()).forEach(key => {
+        if (key.includes(url)) {
+            this.cache.delete(key);
+        }
+    });
+  }
 }
 
 export const httpClient = new HttpClient();

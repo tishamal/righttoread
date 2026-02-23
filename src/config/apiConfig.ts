@@ -36,6 +36,12 @@ export const API_ENDPOINTS = {
       pending: `${TTS_SERVICE_URL}/v1/images/books-pending`,
       generate: (bookId: number | string) => `${TTS_SERVICE_URL}/v1/images/generate/${bookId}`,
   },
+  
+  // Picture Dictionary
+  dictionary: {
+    list: `${TTS_SERVICE_URL}/dictionary`,
+    addWord: `${TTS_SERVICE_URL}/dictionary/add`,
+  },
 
   // TTS Service endpoints (Python FastAPI service)
   tts: {

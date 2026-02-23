@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -335,6 +335,7 @@ const DigitalVersionReview: React.FC = () => {
     audioUrls: Record<string, string>;
   }>({ imageUrl: null, normalBlocks: [], slowBlocks: [], audioUrls: {} });
   const [playingBlockId, setPlayingBlockId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [audioSpeed, setAudioSpeed] = useState<'normal' | 'slow'>('normal');
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -363,6 +364,7 @@ const DigitalVersionReview: React.FC = () => {
   // Delete Block Dialog State
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [blockToDelete, setBlockToDelete] = useState<string | null>(null);
+  const [targetPageInput, setTargetPageInput] = useState('');
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -713,7 +715,34 @@ const DigitalVersionReview: React.FC = () => {
     }
   };
 
+  const handleJumpToPage = () => {
+    if (!bookDetails || !targetPageInput) return;
+
+    // Convert input (1-based page number) to 0-based index
+    const pageNum = parseInt(targetPageInput, 10);
+    const pageIndex = pageNum - 1;
+
+    if (!isNaN(pageIndex) && pageIndex >= 0 && pageIndex < bookDetails.pages.length) {
+      setCurrentPageIndex(pageIndex);
+      setPlayingBlockId(null);
+      setTargetPageInput(''); // Clear input after successful navigation
+    } else {
+      setSnackbar({
+        open: true,
+        message: `Please enter a valid page number between 1 and ${bookDetails.pages.length}`,
+        severity: 'warning',
+      });
+    }
+  };
+
   const handlePlayBlock = (blockId: string, audioBlockId?: string) => {
+    // Helper to stop current audio
+    if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current = null;
+    }
+
     if (playingBlockId === blockId) {
       setPlayingBlockId(null);
     } else {
@@ -736,6 +765,8 @@ const DigitalVersionReview: React.FC = () => {
       
       if (audioUrl) {
         const audio = new Audio(audioUrl);
+        audioRef.current = audio;
+        
         audio.play().catch(err => {
           console.error('Error playing audio:', err);
           setSnackbar({
@@ -745,7 +776,10 @@ const DigitalVersionReview: React.FC = () => {
           });
         });
         
-        audio.onended = () => setPlayingBlockId(null);
+        audio.onended = () => {
+             setPlayingBlockId(null);
+             audioRef.current = null;
+        };
       } else {
         console.error('No audio URL found for key:', audioKey);
         setSnackbar({
@@ -1277,7 +1311,33 @@ const DigitalVersionReview: React.FC = () => {
               </Box>
 
               {/* Page Navigation */}
-              <Box sx={{ display: 'flex', gap: 1 }}>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', gap: 0.5, mr: 1, alignItems: 'center' }}>
+                  <TextField
+                    size="small"
+                    variant="outlined"
+                    placeholder="#"
+                    value={targetPageInput}
+                    onChange={(e) => setTargetPageInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') handleJumpToPage();
+                    }}
+                    sx={{ width: 60, bgcolor: 'background.paper' }}
+                    inputProps={{ 
+                      style: { padding: '4px 8px', textAlign: 'center' },
+                      inputMode: 'numeric', 
+                      pattern: '[0-9]*' 
+                    }}
+                  />
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleJumpToPage}
+                    sx={{ minWidth: 40, px: 1 }}
+                  >
+                    Go
+                  </Button>
+                </Box>
                 <Button
                   variant="contained"
                   size="small"
