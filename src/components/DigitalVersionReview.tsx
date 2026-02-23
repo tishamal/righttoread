@@ -364,6 +364,7 @@ const DigitalVersionReview: React.FC = () => {
   // Delete Block Dialog State
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [blockToDelete, setBlockToDelete] = useState<string | null>(null);
+  const [targetPageInput, setTargetPageInput] = useState('');
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -711,6 +712,26 @@ const DigitalVersionReview: React.FC = () => {
     if (currentPageIndex > 0) {
       setCurrentPageIndex(currentPageIndex - 1);
       setPlayingBlockId(null);
+    }
+  };
+
+  const handleJumpToPage = () => {
+    if (!bookDetails || !targetPageInput) return;
+
+    // Convert input (1-based page number) to 0-based index
+    const pageNum = parseInt(targetPageInput, 10);
+    const pageIndex = pageNum - 1;
+
+    if (!isNaN(pageIndex) && pageIndex >= 0 && pageIndex < bookDetails.pages.length) {
+      setCurrentPageIndex(pageIndex);
+      setPlayingBlockId(null);
+      setTargetPageInput(''); // Clear input after successful navigation
+    } else {
+      setSnackbar({
+        open: true,
+        message: `Please enter a valid page number between 1 and ${bookDetails.pages.length}`,
+        severity: 'warning',
+      });
     }
   };
 
@@ -1290,7 +1311,33 @@ const DigitalVersionReview: React.FC = () => {
               </Box>
 
               {/* Page Navigation */}
-              <Box sx={{ display: 'flex', gap: 1 }}>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', gap: 0.5, mr: 1, alignItems: 'center' }}>
+                  <TextField
+                    size="small"
+                    variant="outlined"
+                    placeholder="#"
+                    value={targetPageInput}
+                    onChange={(e) => setTargetPageInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') handleJumpToPage();
+                    }}
+                    sx={{ width: 60, bgcolor: 'background.paper' }}
+                    inputProps={{ 
+                      style: { padding: '4px 8px', textAlign: 'center' },
+                      inputMode: 'numeric', 
+                      pattern: '[0-9]*' 
+                    }}
+                  />
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleJumpToPage}
+                    sx={{ minWidth: 40, px: 1 }}
+                  >
+                    Go
+                  </Button>
+                </Box>
                 <Button
                   variant="contained"
                   size="small"
