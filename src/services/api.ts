@@ -411,13 +411,24 @@ export const ttsAPI = {
     try {
       // Use the same base URL logic as other TTS endpoints if possible, or construct carefully
       // Based on DigitalVersionReview.tsx usage:
-      const baseUrl = process.env.REACT_APP_TTS_SERVICE_URL || '/api';
+      const baseUrl = process.env.REACT_APP_TTS_SERVICE_URL || 'http://localhost:8000';
       const url = `${baseUrl}/digital-review/books/${bookId}/pages/${pageId}/blocks/${encodeURIComponent(blockId)}?audio_speed=${audioSpeed}`;
       
       const data = await httpClient.delete<any>(url);
       return data;
     } catch (error) {
       console.error('Error deleting block:', error);
+      throw error;
+    }
+  },
+
+  async regeneratePage(bookId: string | number, pageNumber: number): Promise<any> {
+    try {
+      const url = `${API_ENDPOINTS.tts.regeneratePage}?book_id=${bookId}&page_number=${pageNumber}`;
+      const data = await httpClient.post<any>(url, {});
+      return data;
+    } catch (error) {
+      console.error('Error regenerating page:', error);
       throw error;
     }
   },

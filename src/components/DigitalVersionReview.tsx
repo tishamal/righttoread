@@ -1143,6 +1143,44 @@ const DigitalVersionReview: React.FC = () => {
       setLoadingPage(false);
     }
   };
+  
+  const handleFullPageReprocess = async () => {
+    if (!selectedBook || !bookDetails) return;
+    
+    // Confirm first
+    if (!window.confirm("This will completely re-process the page audio using the original image and blocks. All manual edits to this page will be lost. Are you sure?")) {
+      return;
+    }
+
+    const currentPage = bookDetails.pages[currentPageIndex];
+    if (!currentPage) return;
+
+    try {
+      setLoadingPage(true);
+      await ttsAPI.regeneratePage(selectedBook.id, currentPage.page_number);
+      
+      setSnackbar({
+        open: true,
+        message: 'Page reprocessing started. This may take a moment. Please wait and refresh.',
+        severity: 'info',
+      });
+      
+      // Wait for a few seconds before refreshing, as it might be quick for a single page
+      setTimeout(async () => {
+          await fetchBookDetails(selectedBook.id, true);
+      }, 5000);
+
+    } catch (error) {
+       console.error('Error reprocessing page:', error);
+       setSnackbar({
+         open: true,
+         message: 'Failed to start page reprocessing',
+         severity: 'error',
+       });
+    } finally {
+      setLoadingPage(false);
+    }
+  };
 
   const handleOpenApproveDialog = () => {
     setApproveDialogOpen(true);
@@ -1340,6 +1378,16 @@ const DigitalVersionReview: React.FC = () => {
                     Go
                   </Button>
                 </Box>
+                <Button
+                    variant="text"
+                    color="error"
+                    onClick={handleFullPageReprocess}
+                    disabled={loadingPage}
+                    size="small"
+                    sx={{ mr: 1, whiteSpace: 'nowrap' }}
+                >
+                    Reprocess Page
+                </Button>
                 <Button
                   variant="contained"
                   size="small"
