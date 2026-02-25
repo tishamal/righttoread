@@ -1362,7 +1362,7 @@ const DigitalVersionReview: React.FC = () => {
                     onKeyPress={(e) => {
                       if (e.key === 'Enter') handleJumpToPage();
                     }}
-                    sx={{ width: 60, bgcolor: 'background.paper' }}
+                    sx={{ width: 90, bgcolor: 'background.paper' }}
                     inputProps={{ 
                       style: { padding: '4px 8px', textAlign: 'center' },
                       inputMode: 'numeric', 
@@ -1379,12 +1379,12 @@ const DigitalVersionReview: React.FC = () => {
                   </Button>
                 </Box>
                 <Button
-                    variant="text"
+                    variant="contained"
                     color="error"
                     onClick={handleFullPageReprocess}
                     disabled={loadingPage}
                     size="small"
-                    sx={{ mr: 1, whiteSpace: 'nowrap' }}
+                    sx={{ mr: 1, whiteSpace: 'nowrap', bgcolor: '#ffebee', color: '#d32f2f', '&:hover': { bgcolor: '#ffcdd2' } }}
                 >
                     Reprocess Page
                 </Button>
