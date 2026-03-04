@@ -924,7 +924,10 @@ const DigitalVersionReview: React.FC = () => {
       }
       setSnackbar({ open: true, message: 'Block added successfully!', severity: 'success' });
       setAddBlockIndex(null);
-      await loadPageData(currentPageIndex);
+      // Re-fetch book details from DB so the new BlockAudioFile record is included
+      // in page.audio_files — loadPageData alone uses stale bookDetails and would
+      // miss the new audio key, leaving the new block with no presigned URL.
+      await fetchBookDetails(selectedBook.id, true);
     } catch (error: any) {
       setSnackbar({ open: true, message: error.message || 'Failed to add block', severity: 'error' });
     } finally {
