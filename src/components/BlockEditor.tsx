@@ -23,8 +23,10 @@ import {
   Save as SaveIcon,
   Undo as UndoIcon,
   PlayArrow as PlayIcon,
+  Add as AddIcon
 } from '@mui/icons-material';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import AddBlockDialog from './AddBlockDialog';
 
 interface Block {
   text: string;
@@ -73,6 +75,9 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isModified, setIsModified] = useState(false);
+  const [isAddingBlock, setIsAddingBlock] = useState(false);
+  const [addBlockIndex, setAddBlockIndex] = useState<number | null>(null);
+  const [hoveredBetween, setHoveredBetween] = useState<number | null>(null);
 
   // Load blocks from backend
   useEffect(() => {
@@ -245,6 +250,50 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
     }
   };
 
+  const handleAddBlock = async (text: string, voiceId: string) => {
+    if (addBlockIndex === null) return;
+    
+    try {
+      setIsAddingBlock(true);
+      setError(null);
+
+      // Call backend to add block
+      // The backend manages sequence indexing, OCR, audio generation, and re-writing S3 files.
+      // We pass the index where we want to insert.
+      
+      const response = await fetch(
+        `${process.env.REACT_APP_TTS_SERVICE_URL}/digital-review/books/${bookId}/pages/${pageId}/blocks/add`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: text,
+            voice_id: voiceId,
+            sequence_index: addBlockIndex,
+            audio_speed: audioSpeed
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to add block');
+      }
+
+      setSuccess(`Successfully added block!`);
+      setAddBlockIndex(null);
+      
+      // Reload blocks to reflect changes
+      await loadBlocks();
+      onSaveSuccess(); // Trigger parent refresh if needed
+
+    } catch (err: any) {
+      setError(err.message || 'Failed to add block');
+    } finally {
+      setIsAddingBlock(false);
+    }
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -310,14 +359,43 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
           <DragDropContext onDragEnd={handleDragEnd}>
             <Droppable droppableId="blocks">
               {(provided) => (
-                <List {...provided.droppableProps} ref={provided.innerRef}>
+                <Box {...provided.droppableProps} ref={provided.innerRef} component="div">
                   {blockOrder.map((blockId, index) => {
                     const block = blocks[blockId];
                     const currentVoice = voiceChanges[blockId] || extractVoiceFromSSML(block.ssml);
                     const hasChanges = voiceChanges[blockId] || ssmlChanges[blockId];
 
                     return (
-                      <Draggable key={blockId} draggableId={blockId} index={index}>
+                      <React.Fragment key={blockId}>
+                        {/* Hover Insert Separator */}
+                        <Box
+                          onMouseEnter={() => setHoveredBetween(index)}
+                          onMouseLeave={() => setHoveredBetween(null)}
+                          sx={{ position: 'relative', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'default' }}
+                        >
+                          <Box sx={{ width: '100%', height: '2px', bgcolor: hoveredBetween === index ? 'primary.main' : 'divider', transition: 'background-color 0.15s' }} />
+                          {hoveredBetween === index && (
+                            <IconButton
+                              size="small"
+                              onMouseEnter={() => setHoveredBetween(index)}
+                              onClick={() => { setAddBlockIndex(index); setHoveredBetween(null); }}
+                              sx={{
+                                position: 'absolute',
+                                bgcolor: 'white',
+                                border: '2px solid',
+                                borderColor: 'primary.main',
+                                color: 'primary.main',
+                                width: 26,
+                                height: 26,
+                                p: 0,
+                                '&:hover': { bgcolor: 'primary.main', color: 'white' },
+                              }}
+                            >
+                              <AddIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          )}
+                        </Box>
+                      <Draggable draggableId={blockId} index={index}>
                         {(provided, snapshot) => (
                           <ListItem
                             ref={provided.innerRef}
@@ -352,14 +430,54 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
                           </ListItem>
                         )}
                       </Draggable>
+                      </React.Fragment>
                     );
                   })}
                   {provided.placeholder}
-                </List>
+
+                  {/* Hover Append Separator (after last block) */}
+                  {blockOrder.length > 0 && (
+                    <Box
+                      onMouseEnter={() => setHoveredBetween(blockOrder.length)}
+                      onMouseLeave={() => setHoveredBetween(null)}
+                      sx={{ position: 'relative', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'default' }}
+                    >
+                      <Box sx={{ width: '100%', height: '2px', bgcolor: hoveredBetween === blockOrder.length ? 'primary.main' : 'divider', transition: 'background-color 0.15s' }} />
+                      {hoveredBetween === blockOrder.length && (
+                        <IconButton
+                          size="small"
+                          onMouseEnter={() => setHoveredBetween(blockOrder.length)}
+                          onClick={() => { setAddBlockIndex(blockOrder.length); setHoveredBetween(null); }}
+                          sx={{
+                            position: 'absolute',
+                            bgcolor: 'white',
+                            border: '2px solid',
+                            borderColor: 'primary.main',
+                            color: 'primary.main',
+                            width: 26,
+                            height: 26,
+                            p: 0,
+                            '&:hover': { bgcolor: 'primary.main', color: 'white' },
+                          }}
+                        >
+                          <AddIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      )}
+                    </Box>
+                  )}
+                </Box>
               )}
             </Droppable>
           </DragDropContext>
         </Box>
+
+        {/* Add Block Dialog */}
+        <AddBlockDialog
+          open={addBlockIndex !== null}
+          onClose={() => setAddBlockIndex(null)}
+          onSave={handleAddBlock}
+          isProcessing={isAddingBlock}
+        />
 
         {/* Right: Block Editor */}
         <Box sx={{ width: '60%', overflow: 'auto', p: 2 }}>

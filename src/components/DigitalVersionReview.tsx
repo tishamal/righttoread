@@ -41,6 +41,7 @@ import {
   DragIndicator,
   Refresh,
   Delete,
+  Add as AddIcon,
 } from '@mui/icons-material';
 import {
   DndContext,
@@ -61,6 +62,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { ttsAPI } from '../services/api';
 import BookListPanel from './BookListPanel';
+import AddBlockDialog from './AddBlockDialog';
 
 // Amazon Polly Neural Voices - Matching backend configuration
 const AVAILABLE_VOICES = [
@@ -365,6 +367,11 @@ const DigitalVersionReview: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [blockToDelete, setBlockToDelete] = useState<string | null>(null);
   const [targetPageInput, setTargetPageInput] = useState('');
+
+  // Add Block State
+  const [addBlockIndex, setAddBlockIndex] = useState<number | null>(null);
+  const [isAddingBlock, setIsAddingBlock] = useState(false);
+  const [hoveredBetween, setHoveredBetween] = useState<number | null>(null);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -889,6 +896,40 @@ const DigitalVersionReview: React.FC = () => {
   const handleDeleteClick = (blockId: string) => {
     setBlockToDelete(blockId);
     setDeleteDialogOpen(true);
+  };
+
+  const handleAddBlock = async (text: string, voiceId: string) => {
+    if (addBlockIndex === null || !selectedBook || !bookDetails) return;
+    const currentPage = bookDetails.pages[currentPageIndex];
+    if (!currentPage) return;
+
+    try {
+      setIsAddingBlock(true);
+      const response = await fetch(
+        `${process.env.REACT_APP_TTS_SERVICE_URL}/digital-review/books/${selectedBook.id}/pages/${currentPage.id}/blocks/add`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text,
+            voice_id: voiceId,
+            sequence_index: addBlockIndex,
+            audio_speed: audioSpeed,
+          }),
+        }
+      );
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || 'Failed to add block');
+      }
+      setSnackbar({ open: true, message: 'Block added successfully!', severity: 'success' });
+      setAddBlockIndex(null);
+      await loadPageData(currentPageIndex);
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error.message || 'Failed to add block', severity: 'error' });
+    } finally {
+      setIsAddingBlock(false);
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -1635,22 +1676,78 @@ const DigitalVersionReview: React.FC = () => {
                             strategy={verticalListSortingStrategy}
                           >
                             {orderedBlocks.map((block, index) => (
-                              <SortableBlockItem
-                                key={block.id}
-                                block={block}
-                                index={index}
-                                isExpanded={expandedBlocks[block.id] ?? true}
-                                isPlaying={playingBlockId === block.id}
-                                audioSpeed={audioSpeed}
-                                editedSsml={editedSsml[block.id] || block.ssml || ''}
-                                voiceId={voiceIds[block.id] || block.voiceId || 'Ruth'}
-                                onToggle={() => handleToggleBlock(block.id)}
-                                onPlay={() => handlePlayBlock(block.id, block.audioBlockId)}
-                                onSsmlChange={(value) => handleSsmlChange(block.id, value)}
-                                onVoiceChange={(value) => handleVoiceChange(block.id, value)}
-                                onDelete={() => handleDeleteClick(block.id)}
-                              />
+                              <React.Fragment key={block.id}>
+                                {/* Hover insert separator */}
+                                <Box
+                                  onMouseEnter={() => setHoveredBetween(index)}
+                                  onMouseLeave={() => setHoveredBetween(null)}
+                                  sx={{ position: 'relative', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'default' }}
+                                >
+                                  <Box sx={{ width: '100%', height: '2px', bgcolor: hoveredBetween === index ? 'primary.main' : 'divider', transition: 'background-color 0.15s' }} />
+                                  {hoveredBetween === index && (
+                                    <IconButton
+                                      size="small"
+                                      onMouseEnter={() => setHoveredBetween(index)}
+                                      onClick={() => { setAddBlockIndex(index); setHoveredBetween(null); }}
+                                      sx={{
+                                        position: 'absolute',
+                                        bgcolor: 'white',
+                                        border: '2px solid',
+                                        borderColor: 'primary.main',
+                                        color: 'primary.main',
+                                        width: 26, height: 26, p: 0,
+                                        '&:hover': { bgcolor: 'primary.main', color: 'white' },
+                                      }}
+                                    >
+                                      <AddIcon sx={{ fontSize: 16 }} />
+                                    </IconButton>
+                                  )}
+                                </Box>
+                                <SortableBlockItem
+                                  key={block.id}
+                                  block={block}
+                                  index={index}
+                                  isExpanded={expandedBlocks[block.id] ?? true}
+                                  isPlaying={playingBlockId === block.id}
+                                  audioSpeed={audioSpeed}
+                                  editedSsml={editedSsml[block.id] || block.ssml || ''}
+                                  voiceId={voiceIds[block.id] || block.voiceId || 'Ruth'}
+                                  onToggle={() => handleToggleBlock(block.id)}
+                                  onPlay={() => handlePlayBlock(block.id, block.audioBlockId)}
+                                  onSsmlChange={(value) => handleSsmlChange(block.id, value)}
+                                  onVoiceChange={(value) => handleVoiceChange(block.id, value)}
+                                  onDelete={() => handleDeleteClick(block.id)}
+                                />
+                              </React.Fragment>
                             ))}
+                            {/* Hover append separator after last block */}
+                            {orderedBlocks.length > 0 && (
+                              <Box
+                                onMouseEnter={() => setHoveredBetween(orderedBlocks.length)}
+                                onMouseLeave={() => setHoveredBetween(null)}
+                                sx={{ position: 'relative', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'default' }}
+                              >
+                                <Box sx={{ width: '100%', height: '2px', bgcolor: hoveredBetween === orderedBlocks.length ? 'primary.main' : 'divider', transition: 'background-color 0.15s' }} />
+                                {hoveredBetween === orderedBlocks.length && (
+                                  <IconButton
+                                    size="small"
+                                    onMouseEnter={() => setHoveredBetween(orderedBlocks.length)}
+                                    onClick={() => { setAddBlockIndex(orderedBlocks.length); setHoveredBetween(null); }}
+                                    sx={{
+                                      position: 'absolute',
+                                      bgcolor: 'white',
+                                      border: '2px solid',
+                                      borderColor: 'primary.main',
+                                      color: 'primary.main',
+                                      width: 26, height: 26, p: 0,
+                                      '&:hover': { bgcolor: 'primary.main', color: 'white' },
+                                    }}
+                                  >
+                                    <AddIcon sx={{ fontSize: 16 }} />
+                                  </IconButton>
+                                )}
+                              </Box>
+                            )}
                           </SortableContext>
                         </DndContext>
                       );
@@ -1749,6 +1846,14 @@ const DigitalVersionReview: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Add Block Dialog */}
+      <AddBlockDialog
+        open={addBlockIndex !== null}
+        onClose={() => setAddBlockIndex(null)}
+        onSave={handleAddBlock}
+        isProcessing={isAddingBlock}
+      />
 
       {/* Delete Block Dialog */}
       <Dialog
