@@ -365,6 +365,9 @@ const DigitalVersionReview: React.FC = () => {
 
   // Delete Block Dialog State
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Reprocess Page Dialog State
+  const [reprocessDialogOpen, setReprocessDialogOpen] = useState(false);
   const [blockToDelete, setBlockToDelete] = useState<string | null>(null);
   const [targetPageInput, setTargetPageInput] = useState('');
 
@@ -1188,13 +1191,14 @@ const DigitalVersionReview: React.FC = () => {
     }
   };
   
-  const handleFullPageReprocess = async () => {
+  const handleFullPageReprocess = () => {
     if (!selectedBook || !bookDetails) return;
-    
-    // Confirm first
-    if (!window.confirm("This will completely re-process the page audio using the original image and blocks. All manual edits to this page will be lost. Are you sure?")) {
-      return;
-    }
+    setReprocessDialogOpen(true);
+  };
+
+  const handleConfirmReprocess = async () => {
+    if (!selectedBook || !bookDetails) return;
+    setReprocessDialogOpen(false);
 
     const currentPage = bookDetails.pages[currentPageIndex];
     if (!currentPage) return;
@@ -1857,6 +1861,37 @@ const DigitalVersionReview: React.FC = () => {
         onSave={handleAddBlock}
         isProcessing={isAddingBlock}
       />
+
+      {/* Reprocess Page Dialog */}
+      <Dialog
+        open={reprocessDialogOpen}
+        onClose={() => setReprocessDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Refresh color="error" />
+          Reprocess Page?
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            This will completely re-process the page audio using the original image and blocks. All manual edits to this page will be lost. Are you sure?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setReprocessDialogOpen(false)} color="inherit">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmReprocess}
+            variant="contained"
+            color="error"
+            autoFocus
+          >
+            Reprocess
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Delete Block Dialog */}
       <Dialog
