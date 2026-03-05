@@ -5,6 +5,7 @@ import Login from './components/Login';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import DigitalVersionReview from './components/DigitalVersionReview';
 import PictureDictionary from './components/PictureDictionary';
+import SchoolRegistration from './components/SchoolRegistration';
 import { booksAPI, ttsAPI, analyticsAPI } from './services/api';
 import { OverviewStats, SchoolMetrics } from './types/analytics';
 import {
@@ -52,6 +53,7 @@ import {
   Equalizer as AnalyticsIcon,
   Audiotrack as AudioIcon,
   Collections as DictionaryIcon,
+  School as SchoolIcon,
 } from '@mui/icons-material';
 import { styled, alpha } from '@mui/material/styles';
 
@@ -223,6 +225,7 @@ function App() {
     { text: 'Analytics', icon: <AnalyticsIcon />, id: 'Analytics' },
     { text: 'Digital Review', icon: <AudioIcon />, id: 'DigitalReview' },
     { text: 'Picture Dictionary', icon: <DictionaryIcon />, id: 'PictureDictionary' },
+    { text: 'School Registration', icon: <SchoolIcon />, id: 'SchoolRegistration' },
     { text: 'Account', icon: <AccountIcon />, id: 'Account' },
     { text: 'Settings', icon: <SettingsIcon />, id: 'Settings' },
   ];
@@ -428,6 +431,8 @@ function App() {
             onShowNotification={(message, severity) => setUploadStatus({ open: true, message, severity })}
           />
         );
+      case 'SchoolRegistration':
+        return <SchoolRegistration />;
       case 'Dashboard':
       default:
         return (
