@@ -215,16 +215,13 @@ const SchoolRegistration: React.FC = () => {
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <Box className="fade-in">
+    <Box className="fade-in" sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 112px)', overflow: 'hidden' }}>
       {/* Page Header */}
-      <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+      <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1.5, flexShrink: 0 }}>
         <SchoolIcon sx={{ fontSize: 32, color: 'primary.main' }} />
         <Box>
           <Typography variant="h4" fontWeight="bold">
             School Registration
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Manage registered schools for the Right to Read programme
           </Typography>
         </Box>
 
@@ -259,14 +256,14 @@ const SchoolRegistration: React.FC = () => {
       </Box>
 
       {/* Two-column layout */}
-      <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start' }}>
+      <Box sx={{ display: 'flex', gap: 3, alignItems: 'stretch', flex: 1, minHeight: 0, overflow: 'hidden' }}>
 
         {/* ------------------------------------------------------------------ */}
         {/* LEFT: Schools Table                                                  */}
         {/* ------------------------------------------------------------------ */}
         <Paper
           elevation={2}
-          sx={{ flex: '1 1 60%', minWidth: 0, borderRadius: 3, overflow: 'hidden' }}
+          sx={{ flex: '1 1 60%', minWidth: 0, borderRadius: 3, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
         >
           <Box sx={{ px: 3, py: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Typography variant="h6" fontWeight="bold">
@@ -279,8 +276,8 @@ const SchoolRegistration: React.FC = () => {
               <CircularProgress />
             </Box>
           ) : (
-            <>
-              <TableContainer sx={{ maxHeight: 520 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              <TableContainer sx={{ flex: 1, overflow: 'auto' }}>
                 <Table stickyHeader size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
                   <TableHead>
                     <TableRow>
@@ -369,14 +366,14 @@ const SchoolRegistration: React.FC = () => {
                 }}
                 rowsPerPageOptions={[25, 50, 100]}
               />
-            </>
+            </Box>
           )}
         </Paper>
 
         {/* ------------------------------------------------------------------ */}
         {/* RIGHT: Registration Form                                             */}
         {/* ------------------------------------------------------------------ */}
-        <Paper elevation={2} sx={{ flex: '0 0 340px', width: 340, borderRadius: 3 }}>
+        <Paper elevation={2} sx={{ flex: '0 0 340px', width: 340, borderRadius: 3, overflow: 'auto' }}>
           <Box sx={{ px: 3, py: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Typography variant="h6" fontWeight="bold">
               {editingId !== null ? 'Edit School' : 'Register New School'}
