@@ -43,6 +43,15 @@ export const API_ENDPOINTS = {
     addWord: `${TTS_SERVICE_URL}/dictionary/add`,
   },
 
+  // School Registration endpoints (Python FastAPI service)
+  schools: {
+    list: `${TTS_SERVICE_URL}/registered-schools`,
+    create: `${TTS_SERVICE_URL}/registered-schools`,
+    byId: (id: number) => `${TTS_SERVICE_URL}/registered-schools/${id}`,
+    update: (id: number) => `${TTS_SERVICE_URL}/registered-schools/${id}`,
+    delete: (id: number) => `${TTS_SERVICE_URL}/registered-schools/${id}`,
+  },
+
   // TTS Service endpoints (Python FastAPI service)
   tts: {
     uploadBook: `${TTS_SERVICE_URL}/tts_service`,
