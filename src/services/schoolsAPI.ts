@@ -23,22 +23,48 @@ export interface SchoolFormData {
   division: string;
 }
 
+export interface PaginatedSchoolsResponse {
+  data: RegisteredSchool[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface SchoolsQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
 interface ApiResponse<T> {
   success: boolean;
   data?: T;
-  count?: number;
+  total?: number;
+  page?: number;
+  limit?: number;
   message?: string;
   error?: string;
 }
 
 export const schoolsAPI = {
-  async getAll(): Promise<RegisteredSchool[]> {
+  async getAll(params: SchoolsQueryParams = {}): Promise<PaginatedSchoolsResponse> {
     try {
+      const { page = 1, limit = 50, search } = params;
+      const qs = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+        ...(search ? { search } : {}),
+      });
       const data = await httpClient.get<ApiResponse<RegisteredSchool[]>>(
-        API_ENDPOINTS.schools.list
+        `${API_ENDPOINTS.schools.list}?${qs}`
       );
       if (!data.success) throw new Error(data.error || 'Failed to fetch schools');
-      return data.data || [];
+      return {
+        data: data.data || [],
+        total: data.total ?? 0,
+        page: data.page ?? page,
+        limit: data.limit ?? limit,
+      };
     } catch (error) {
       console.error('Error fetching registered schools:', error);
       throw error;

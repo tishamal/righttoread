@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -11,6 +11,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
   IconButton,
   Tooltip,
   Alert,
@@ -48,56 +49,70 @@ const emptyForm = (): SchoolFormData => ({
 // Component
 // ---------------------------------------------------------------------------
 const SchoolRegistration: React.FC = () => {
+  // Table data
   const [schools, setSchools] = useState<RegisteredSchool[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
+  // Pagination (MUI TablePagination is 0-based)
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
+
+  // Search
+  const [searchInput, setSearchInput] = useState('');       // live text field value
+  const [committedSearch, setCommittedSearch] = useState(''); // debounced â€” sent to API
+
+  // Form
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<SchoolFormData>(emptyForm());
   const [editingId, setEditingId] = useState<number | null>(null);
   const [errors, setErrors] = useState<Partial<SchoolFormData>>({});
 
+  // Snackbar
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
     severity: 'success' | 'error';
   }>({ open: false, message: '', severity: 'success' });
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchInput, setSearchInput] = useState('');
-
-  // Derived: filter schools across all columns
-  const filteredSchools = searchQuery
-    ? schools.filter((s) => {
-        const q = searchQuery.toLowerCase();
-        return (
-          s.school_name.toLowerCase().includes(q) ||
-          s.census_no.toLowerCase().includes(q) ||
-          s.province.toLowerCase().includes(q) ||
-          s.district.toLowerCase().includes(q) ||
-          s.zone.toLowerCase().includes(q) ||
-          s.division.toLowerCase().includes(q)
-        );
-      })
-    : schools;
+  // ---------------------------------------------------------------------------
+  // Debounce: fire API search 300ms after user stops typing
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCommittedSearch(searchInput);
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   // ---------------------------------------------------------------------------
-  // Data loading
+  // Data loading â€” re-runs on page, rowsPerPage, or search change
   // ---------------------------------------------------------------------------
-  const loadSchools = async () => {
+  const loadSchools = useCallback(async (
+    p: number,
+    limit: number,
+    search: string,
+  ) => {
     try {
       setLoading(true);
-      const data = await schoolsAPI.getAll();
-      setSchools(data);
-    } catch (err) {
+      const result = await schoolsAPI.getAll({
+        page: p + 1, // convert 0-based MUI page â†’ 1-based API page
+        limit,
+        search: search || undefined,
+      });
+      setSchools(result.data);
+      setTotalCount(result.total);
+    } catch {
       showSnackbar('Failed to load schools. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadSchools();
-  }, []);
+    loadSchools(page, rowsPerPage, committedSearch);
+  }, [page, rowsPerPage, committedSearch, loadSchools]);
 
   // ---------------------------------------------------------------------------
   // Helpers
@@ -112,27 +127,23 @@ const SchoolRegistration: React.FC = () => {
     setErrors({});
   };
 
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setCommittedSearch('');
+    setPage(0);
+  };
+
   // ---------------------------------------------------------------------------
   // Validation
   // ---------------------------------------------------------------------------
   const validate = (): boolean => {
     const newErrors: Partial<SchoolFormData> = {};
-
     if (!form.school_name.trim()) newErrors.school_name = 'School name is required.';
-    if (!form.census_no.trim()) {
-      newErrors.census_no = 'Census No is required.';
-    } else {
-      // Uniqueness check (excluding current record when editing)
-      const duplicate = schools.find(
-        (s) => s.census_no === form.census_no.trim() && s.id !== editingId
-      );
-      if (duplicate) newErrors.census_no = 'This Census No is already registered.';
-    }
+    if (!form.census_no.trim()) newErrors.census_no = 'Census No is required.';
     if (!form.province.trim()) newErrors.province = 'Province is required.';
     if (!form.district.trim()) newErrors.district = 'District is required.';
     if (!form.zone.trim()) newErrors.zone = 'Zone is required.';
     if (!form.division.trim()) newErrors.division = 'Division is required.';
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -143,17 +154,17 @@ const SchoolRegistration: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-
     try {
       setSaving(true);
       if (editingId !== null) {
-        const updated = await schoolsAPI.update(editingId, form);
-        setSchools((prev) => prev.map((s) => (s.id === editingId ? updated : s)));
+        await schoolsAPI.update(editingId, form);
         showSnackbar('School updated successfully.', 'success');
+        await loadSchools(page, rowsPerPage, committedSearch);
       } else {
-        const created = await schoolsAPI.create(form);
-        setSchools((prev) => [...prev, created]);
+        await schoolsAPI.create(form);
         showSnackbar('School registered successfully.', 'success');
+        setPage(0);
+        await loadSchools(0, rowsPerPage, committedSearch);
       }
       resetForm();
     } catch (err: any) {
@@ -183,9 +194,11 @@ const SchoolRegistration: React.FC = () => {
     if (!window.confirm(`Delete "${school.school_name}"? This cannot be undone.`)) return;
     try {
       await schoolsAPI.delete(school.id);
-      setSchools((prev) => prev.filter((s) => s.id !== school.id));
       if (editingId === school.id) resetForm();
       showSnackbar('School deleted successfully.', 'success');
+      const newPage = schools.length === 1 && page > 0 ? page - 1 : page;
+      setPage(newPage);
+      await loadSchools(newPage, rowsPerPage, committedSearch);
     } catch {
       showSnackbar('Failed to delete school. Please try again.', 'error');
     }
@@ -214,40 +227,31 @@ const SchoolRegistration: React.FC = () => {
             Manage registered schools for the Right to Read programme
           </Typography>
         </Box>
-        {/* Search bar + Schools count */}
+
+        {/* Search bar + count */}
         <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
           <TextField
             size="small"
-            placeholder="Search schools…"
+            placeholder="Search schools..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') setSearchQuery(searchInput);
-            }}
             InputProps={{
-              endAdornment: searchQuery ? (
-                <IconButton
-                  size="small"
-                  onClick={() => { setSearchInput(''); setSearchQuery(''); }}
-                  edge="end"
-                >
+              endAdornment: searchInput ? (
+                <IconButton size="small" onClick={handleClearSearch} edge="end">
                   <ClearIcon fontSize="small" />
                 </IconButton>
-              ) : null,
+              ) : (
+                <SearchIcon fontSize="small" sx={{ color: 'text.disabled', mr: 0.5 }} />
+              ),
             }}
-            sx={{ width: 240 }}
+            sx={{ width: 260 }}
           />
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<SearchIcon />}
-            onClick={() => setSearchQuery(searchInput)}
-            sx={{ textTransform: 'none', height: 40 }}
-          >
-            Search
-          </Button>
           <Chip
-            label={`${filteredSchools.length}${searchQuery ? ` / ${schools.length}` : ''} Schools`}
+            label={
+              committedSearch
+                ? `${totalCount.toLocaleString()} results`
+                : `${totalCount.toLocaleString()} Schools`
+            }
             color="primary"
             variant="outlined"
           />
@@ -275,100 +279,104 @@ const SchoolRegistration: React.FC = () => {
               <CircularProgress />
             </Box>
           ) : (
-            <TableContainer sx={{ maxHeight: 620 }}>
-              <Table stickyHeader size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 700, width: 200, maxWidth: 200 }}>School Name</TableCell>
-                    <TableCell sx={{ fontWeight: 700, width: 90 }}>Census No</TableCell>
-                    <TableCell sx={{ fontWeight: 700, width: 90 }}>Province</TableCell>
-                    <TableCell sx={{ fontWeight: 700, width: 90 }}>District</TableCell>
-                    <TableCell sx={{ fontWeight: 700, width: 110 }}>Zone</TableCell>
-                    <TableCell sx={{ fontWeight: 700, width: 110 }}>Division</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 700, width: 80 }}>
-                      Actions
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {schools.length === 0 ? (
+            <>
+              <TableContainer sx={{ maxHeight: 520 }}>
+                <Table stickyHeader size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
+                  <TableHead>
                     <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 6, color: 'text.secondary' }}>
-                        No schools registered yet. Use the form to add the first one.
+                      <TableCell sx={{ fontWeight: 700, width: 200, maxWidth: 200 }}>School Name</TableCell>
+                      <TableCell sx={{ fontWeight: 700, width: 90 }}>Census No</TableCell>
+                      <TableCell sx={{ fontWeight: 700, width: 90 }}>Province</TableCell>
+                      <TableCell sx={{ fontWeight: 700, width: 90 }}>District</TableCell>
+                      <TableCell sx={{ fontWeight: 700, width: 110 }}>Zone</TableCell>
+                      <TableCell sx={{ fontWeight: 700, width: 110 }}>Division</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, width: 80 }}>
+                        Actions
                       </TableCell>
                     </TableRow>
-                  ) : filteredSchools.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 6, color: 'text.secondary' }}>
-                        No schools match your search.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredSchools.map((school) => (
-                      <TableRow
-                        key={school.id}
-                        hover
-                        selected={editingId === school.id}
-                        sx={{
-                          '&.Mui-selected': {
-                            backgroundColor: 'primary.50',
-                          },
-                        }}
-                      >
-                        <TableCell
-                          sx={{
-                            maxWidth: 200,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                          title={school.school_name}
-                        >
-                          {school.school_name}
-                        </TableCell>
-                        <TableCell>
-                          <Chip label={school.census_no} size="small" variant="outlined" />
-                        </TableCell>
-                        <TableCell>{school.province}</TableCell>
-                        <TableCell>{school.district}</TableCell>
-                        <TableCell>{school.zone}</TableCell>
-                        <TableCell>{school.division}</TableCell>
-                        <TableCell align="center">
-                          <Tooltip title="Edit">
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={() => handleEdit(school)}
-                            >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Delete">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleDelete(school)}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                  </TableHead>
+                  <TableBody>
+                    {schools.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} align="center" sx={{ py: 6, color: 'text.secondary' }}>
+                          {committedSearch
+                            ? 'No schools match your search.'
+                            : 'No schools registered yet. Use the form to add the first one.'}
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                    ) : (
+                      schools.map((school) => (
+                        <TableRow
+                          key={school.id}
+                          hover
+                          selected={editingId === school.id}
+                          sx={{ '&.Mui-selected': { backgroundColor: 'primary.50' } }}
+                        >
+                          <TableCell
+                            sx={{
+                              maxWidth: 200,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                            title={school.school_name}
+                          >
+                            {school.school_name}
+                          </TableCell>
+                          <TableCell>
+                            <Chip label={school.census_no} size="small" variant="outlined" />
+                          </TableCell>
+                          <TableCell>{school.province}</TableCell>
+                          <TableCell>{school.district}</TableCell>
+                          <TableCell>{school.zone}</TableCell>
+                          <TableCell>{school.division}</TableCell>
+                          <TableCell align="center">
+                            <Tooltip title="Edit">
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => handleEdit(school)}
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Delete">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleDelete(school)}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              <TablePagination
+                component="div"
+                count={totalCount}
+                page={page}
+                onPageChange={(_e, newPage) => setPage(newPage)}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={(e) => {
+                  setRowsPerPage(parseInt(e.target.value, 10));
+                  setPage(0);
+                }}
+                rowsPerPageOptions={[25, 50, 100]}
+              />
+            </>
           )}
         </Paper>
 
         {/* ------------------------------------------------------------------ */}
         {/* RIGHT: Registration Form                                             */}
         {/* ------------------------------------------------------------------ */}
-        <Paper
-          elevation={2}
-          sx={{ flex: '0 0 340px', width: 340, borderRadius: 3 }}
-        >
+        <Paper elevation={2} sx={{ flex: '0 0 340px', width: 340, borderRadius: 3 }}>
           <Box sx={{ px: 3, py: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Typography variant="h6" fontWeight="bold">
               {editingId !== null ? 'Edit School' : 'Register New School'}
@@ -380,12 +388,7 @@ const SchoolRegistration: React.FC = () => {
             </Typography>
           </Box>
 
-          <Box
-            component="form"
-            onSubmit={handleSubmit}
-            noValidate
-            sx={{ px: 3, py: 3 }}
-          >
+          <Box component="form" onSubmit={handleSubmit} noValidate sx={{ px: 3, py: 3 }}>
             <Stack spacing={2.5}>
               <TextField
                 label="School Name"
@@ -468,18 +471,10 @@ const SchoolRegistration: React.FC = () => {
                   fullWidth
                   disabled={saving}
                   startIcon={
-                    saving ? (
-                      <CircularProgress size={16} color="inherit" />
-                    ) : (
-                      <SaveIcon />
-                    )
+                    saving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />
                   }
                 >
-                  {saving
-                    ? 'Saving…'
-                    : editingId !== null
-                    ? 'Save Changes'
-                    : 'Register School'}
+                  {saving ? 'Savingâ€¦' : editingId !== null ? 'Save Changes' : 'Register School'}
                 </Button>
 
                 {editingId !== null && (
