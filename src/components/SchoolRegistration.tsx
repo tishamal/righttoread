@@ -27,6 +27,8 @@ import {
   Cancel as CancelIcon,
   AddCircleOutline as AddIcon,
   School as SchoolIcon,
+  Search as SearchIcon,
+  Clear as ClearIcon,
 } from '@mui/icons-material';
 import { schoolsAPI, RegisteredSchool, SchoolFormData } from '../services/schoolsAPI';
 
@@ -59,6 +61,24 @@ const SchoolRegistration: React.FC = () => {
     message: string;
     severity: 'success' | 'error';
   }>({ open: false, message: '', severity: 'success' });
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+
+  // Derived: filter schools across all columns
+  const filteredSchools = searchQuery
+    ? schools.filter((s) => {
+        const q = searchQuery.toLowerCase();
+        return (
+          s.school_name.toLowerCase().includes(q) ||
+          s.census_no.toLowerCase().includes(q) ||
+          s.province.toLowerCase().includes(q) ||
+          s.district.toLowerCase().includes(q) ||
+          s.zone.toLowerCase().includes(q) ||
+          s.division.toLowerCase().includes(q)
+        );
+      })
+    : schools;
 
   // ---------------------------------------------------------------------------
   // Data loading
@@ -194,12 +214,44 @@ const SchoolRegistration: React.FC = () => {
             Manage registered schools for the Right to Read programme
           </Typography>
         </Box>
-        <Chip
-          label={`${schools.length} Schools`}
-          color="primary"
-          variant="outlined"
-          sx={{ ml: 'auto' }}
-        />
+        {/* Search bar + Schools count */}
+        <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <TextField
+            size="small"
+            placeholder="Search schools…"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') setSearchQuery(searchInput);
+            }}
+            InputProps={{
+              endAdornment: searchQuery ? (
+                <IconButton
+                  size="small"
+                  onClick={() => { setSearchInput(''); setSearchQuery(''); }}
+                  edge="end"
+                >
+                  <ClearIcon fontSize="small" />
+                </IconButton>
+              ) : null,
+            }}
+            sx={{ width: 240 }}
+          />
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<SearchIcon />}
+            onClick={() => setSearchQuery(searchInput)}
+            sx={{ textTransform: 'none', height: 40 }}
+          >
+            Search
+          </Button>
+          <Chip
+            label={`${filteredSchools.length}${searchQuery ? ` / ${schools.length}` : ''} Schools`}
+            color="primary"
+            variant="outlined"
+          />
+        </Box>
       </Box>
 
       {/* Two-column layout */}
@@ -245,8 +297,14 @@ const SchoolRegistration: React.FC = () => {
                         No schools registered yet. Use the form to add the first one.
                       </TableCell>
                     </TableRow>
+                  ) : filteredSchools.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center" sx={{ py: 6, color: 'text.secondary' }}>
+                        No schools match your search.
+                      </TableCell>
+                    </TableRow>
                   ) : (
-                    schools.map((school) => (
+                    filteredSchools.map((school) => (
                       <TableRow
                         key={school.id}
                         hover
