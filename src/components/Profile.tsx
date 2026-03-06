@@ -7,21 +7,15 @@ import {
   TextField,
   Button,
   Avatar,
-  Divider,
   Alert,
   Snackbar,
   InputAdornment,
-  IconButton,
   Chip,
-  CircularProgress,
 } from '@mui/material';
 import {
   Person as PersonIcon,
   Email as EmailIcon,
   Badge as BadgeIcon,
-  Lock as LockIcon,
-  Visibility,
-  VisibilityOff,
   Edit as EditIcon,
   Save as SaveIcon,
   Cancel as CancelIcon,
@@ -63,16 +57,6 @@ const Profile: React.FC<ProfileProps> = ({ currentUser }) => {
   const [editMode, setEditMode] = useState(false);
   const [editedProfile, setEditedProfile] = useState<UserProfile>(profile);
 
-  // Password change state
-  const [showPasswordSection, setShowPasswordSection] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [passwordLoading, setPasswordLoading] = useState(false);
-
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -81,13 +65,38 @@ const Profile: React.FC<ProfileProps> = ({ currentUser }) => {
 
   const [errors, setErrors] = useState<Partial<UserProfile & { confirmPassword: string }>>({});
 
+  // Load latest attributes from Cognito on mount
+  useEffect(() => {
+    const accessToken = localStorage.getItem('access_token');
+    if (!accessToken) return;
+
+    authAPI.getMe()
+      .then((attrs) => {
+        setProfile((prev) => {
+          const updated: UserProfile = {
+            ...prev,
+            email: attrs.email ?? prev.email,
+            phone: attrs.phone_number ?? prev.phone,
+            displayName:
+              attrs.name ??
+              (attrs.given_name && attrs.family_name
+                ? `${attrs.given_name} ${attrs.family_name}`
+                : prev.displayName),
+          };
+          localStorage.setItem('userProfile', JSON.stringify(updated));
+          return updated;
+        });
+      })
+      .catch((err) => {
+        console.warn('Could not load Cognito user attributes:', err);
+      });
+  }, []);
+
+
   const validateProfile = (): boolean => {
     const newErrors: Partial<UserProfile> = {};
     if (!editedProfile.displayName.trim()) {
       newErrors.displayName = 'Display name is required';
-    }
-    if (editedProfile.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editedProfile.email)) {
-      newErrors.email = 'Invalid email address';
     }
     if (editedProfile.phone && !/^[\d\s\+\-\(\)]{7,15}$/.test(editedProfile.phone)) {
       newErrors.phone = 'Invalid phone number';
@@ -107,53 +116,28 @@ const Profile: React.FC<ProfileProps> = ({ currentUser }) => {
     setEditMode(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validateProfile()) return;
 
-    const updated = { ...editedProfile, username: currentUser };
-    setProfile(updated);
-    localStorage.setItem('userProfile', JSON.stringify(updated));
-    setEditMode(false);
-    setSnackbar({ open: true, message: 'Profile updated successfully!', severity: 'success' });
-  };
-
-  const validatePassword = (): boolean => {
-    const newErrors: any = {};
-    if (!currentPassword) newErrors.currentPassword = 'Current password is required';
-    if (!newPassword) {
-      newErrors.newPassword = 'New password is required';
-    } else if (newPassword.length < 8) {
-      newErrors.newPassword = 'Password must be at least 8 characters';
-    }
-    if (!confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your new password';
-    } else if (newPassword !== confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handlePasswordChange = async () => {
-    if (!validatePassword()) return;
-    setPasswordLoading(true);
     try {
-      // Attempt authentication with current password to verify it
-      await authAPI.login({ username: currentUser, password: currentPassword });
-      // If no error, update via setPassword endpoint using the existing session logic
-      setSnackbar({ open: true, message: 'Password updated successfully!', severity: 'success' });
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setShowPasswordSection(false);
+      await authAPI.updateMe({
+        name: editedProfile.displayName,
+        phone_number: editedProfile.phone || undefined,
+        role: editedProfile.role,
+        department: editedProfile.department,
+      });
+
+      const updated = { ...editedProfile, username: currentUser };
+      setProfile(updated);
+      localStorage.setItem('userProfile', JSON.stringify(updated));
+      setEditMode(false);
+      setSnackbar({ open: true, message: 'Profile updated successfully!', severity: 'success' });
     } catch (err: any) {
       setSnackbar({
         open: true,
-        message: err?.message || 'Failed to update password. Please check your current password.',
+        message: err?.message || 'Failed to update profile. Please try again.',
         severity: 'error',
       });
-    } finally {
-      setPasswordLoading(false);
     }
   };
 
@@ -281,18 +265,14 @@ const Profile: React.FC<ProfileProps> = ({ currentUser }) => {
                 />
               </Grid>
 
-              {/* Email */}
+              {/* Email (read-only) */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Email Address"
                   type="email"
-                  value={editMode ? editedProfile.email : profile.email}
-                  onChange={(e) => setEditedProfile(prev => ({ ...prev, email: e.target.value }))}
-                  disabled={!editMode}
-                  error={!!errors.email}
-                  helperText={errors.email}
-                  placeholder="Enter email address"
+                  value={profile.email}
+                  disabled
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -300,6 +280,7 @@ const Profile: React.FC<ProfileProps> = ({ currentUser }) => {
                       </InputAdornment>
                     ),
                   }}
+                  helperText="Email cannot be changed"
                 />
               </Grid>
 
@@ -360,128 +341,6 @@ const Profile: React.FC<ProfileProps> = ({ currentUser }) => {
                 />
               </Grid>
             </Grid>
-          </Paper>
-
-          {/* Change Password Section */}
-          <Paper sx={{ p: 3, borderRadius: 3, mt: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: showPasswordSection ? 3 : 0 }}>
-              <Box>
-                <Typography variant="h6" fontWeight="bold">
-                  Change Password
-                </Typography>
-                {!showPasswordSection && (
-                  <Typography variant="body2" color="textSecondary">
-                    Update your account password
-                  </Typography>
-                )}
-              </Box>
-              <Button
-                variant={showPasswordSection ? 'text' : 'outlined'}
-                startIcon={showPasswordSection ? <CancelIcon /> : <LockIcon />}
-                onClick={() => {
-                  setShowPasswordSection(!showPasswordSection);
-                  setCurrentPassword('');
-                  setNewPassword('');
-                  setConfirmPassword('');
-                  setErrors({});
-                }}
-                sx={{ textTransform: 'none' }}
-                color={showPasswordSection ? 'inherit' : 'primary'}
-              >
-                {showPasswordSection ? 'Cancel' : 'Change Password'}
-              </Button>
-            </Box>
-
-            {showPasswordSection && (
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Current Password"
-                    type={showCurrentPassword ? 'text' : 'password'}
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    error={!!(errors as any).currentPassword}
-                    helperText={(errors as any).currentPassword}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <LockIcon fontSize="small" color="action" />
-                        </InputAdornment>
-                      ),
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton onClick={() => setShowCurrentPassword(!showCurrentPassword)} edge="end">
-                            {showCurrentPassword ? <VisibilityOff /> : <Visibility />}
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="New Password"
-                    type={showNewPassword ? 'text' : 'password'}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    error={!!(errors as any).newPassword}
-                    helperText={(errors as any).newPassword}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <LockIcon fontSize="small" color="action" />
-                        </InputAdornment>
-                      ),
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton onClick={() => setShowNewPassword(!showNewPassword)} edge="end">
-                            {showNewPassword ? <VisibilityOff /> : <Visibility />}
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Confirm New Password"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    error={!!(errors as any).confirmPassword}
-                    helperText={(errors as any).confirmPassword}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <LockIcon fontSize="small" color="action" />
-                        </InputAdornment>
-                      ),
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)} edge="end">
-                            {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Button
-                    variant="contained"
-                    onClick={handlePasswordChange}
-                    disabled={passwordLoading}
-                    startIcon={passwordLoading ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
-                    sx={{ textTransform: 'none' }}
-                  >
-                    {passwordLoading ? 'Updating...' : 'Update Password'}
-                  </Button>
-                </Grid>
-              </Grid>
-            )}
           </Paper>
         </Grid>
       </Grid>

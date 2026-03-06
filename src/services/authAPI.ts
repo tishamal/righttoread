@@ -32,6 +32,22 @@ export interface SetPasswordRequest {
   session: string;
 }
 
+export interface CognitoUserAttributes {
+  username: string;
+  email: string | null;
+  phone_number: string | null;
+  name: string | null;
+  given_name: string | null;
+  family_name: string | null;
+}
+
+export interface UpdateUserRequest {
+  name?: string;
+  phone_number?: string;
+  role?: string;
+  department?: string;
+}
+
 export const authAPI = {
   async login(data: LoginRequest): Promise<LoginResponse> {
     return httpClient.post<LoginResponse>(API_ENDPOINTS.auth.login, data);
@@ -55,5 +71,25 @@ export const authAPI = {
 
   getAccessToken(): string | null {
     return localStorage.getItem('access_token');
+  },
+
+  async getMe(): Promise<CognitoUserAttributes> {
+    const token = localStorage.getItem('access_token');
+    if (!token) throw new Error('Not authenticated');
+    return httpClient.get<CognitoUserAttributes>(
+      API_ENDPOINTS.auth.me,
+      { headers: { Authorization: `Bearer ${token}` } },
+      true, // skip cache — always fetch fresh attributes
+    );
+  },
+
+  async updateMe(data: UpdateUserRequest): Promise<void> {
+    const token = localStorage.getItem('access_token');
+    if (!token) throw new Error('Not authenticated');
+    await httpClient.put<unknown>(
+      API_ENDPOINTS.auth.me,
+      data,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
   },
 };

@@ -53,6 +53,7 @@ export const API_ENDPOINTS = {
   auth: {
     login:       `${TTS_SERVICE_URL}/auth/login`,
     setPassword: `${TTS_SERVICE_URL}/auth/set-password`,
+    me:          `${TTS_SERVICE_URL}/auth/me`,
   },
 
   // School Registration endpoints (Python FastAPI service)
