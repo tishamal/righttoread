@@ -63,4 +63,8 @@ export const usersAPI = {
   async delete(username: string): Promise<void> {
     await httpClient.delete(`${API_ENDPOINTS.users.list}/${encodeURIComponent(username)}`);
   },
+
+  async enable(username: string): Promise<void> {
+    await httpClient.post(`${API_ENDPOINTS.users.list}/${encodeURIComponent(username)}/enable`, {});
+  },
 };

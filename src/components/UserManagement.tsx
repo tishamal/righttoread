@@ -25,6 +25,7 @@ import {
   Search as SearchIcon,
   Clear as ClearIcon,
   DeleteOutline as DeleteIcon,
+  CheckCircleOutline as EnableIcon,
 } from '@mui/icons-material';
 import { usersAPI, UserRecord, UserFormData } from '../services/usersAPI';
 
@@ -64,6 +65,7 @@ const UserManagement: React.FC = () => {
   // Row selection + delete
   const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [enabling, setEnabling] = useState(false);
 
   // Snackbar
   const [snackbar, setSnackbar] = useState<{
@@ -140,6 +142,21 @@ const UserManagement: React.FC = () => {
       showSnackbar('Failed to delete user. Please try again.', 'error');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleEnable = async () => {
+    if (!selectedUser) return;
+    try {
+      setEnabling(true);
+      await usersAPI.enable(selectedUser.username);
+      setSelectedUser(null);
+      showSnackbar(`User "${selectedUser.username}" has been re-enabled.`, 'success');
+      await loadUsers(committedSearch);
+    } catch {
+      showSnackbar('Failed to enable user. Please try again.', 'error');
+    } finally {
+      setEnabling(false);
     }
   };
 
@@ -240,10 +257,20 @@ const UserManagement: React.FC = () => {
           />
           <Button
             variant="outlined"
+            color="success"
+            size="small"
+            startIcon={enabling ? <CircularProgress size={14} color="inherit" /> : <EnableIcon />}
+            disabled={!selectedUser || selectedUser.status !== 'DELETED' || enabling}
+            onClick={handleEnable}
+          >
+            Enable User
+          </Button>
+          <Button
+            variant="outlined"
             color="error"
             size="small"
             startIcon={deleting ? <CircularProgress size={14} color="inherit" /> : <DeleteIcon />}
-            disabled={!selectedUser || deleting}
+            disabled={!selectedUser || selectedUser.status === 'DELETED' || deleting}
             onClick={handleDelete}
           >
             Delete User
