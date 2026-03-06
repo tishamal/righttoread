@@ -43,6 +43,19 @@ export const API_ENDPOINTS = {
     addWord: `${TTS_SERVICE_URL}/dictionary/add`,
   },
 
+  // User Management endpoints (Cognito via Python FastAPI service)
+  users: {
+    list: `${TTS_SERVICE_URL}/users`,
+    create: `${TTS_SERVICE_URL}/users`,
+  },
+
+  // Auth endpoints (Cognito via Python FastAPI service)
+  auth: {
+    login:       `${TTS_SERVICE_URL}/auth/login`,
+    setPassword: `${TTS_SERVICE_URL}/auth/set-password`,
+    me:          `${TTS_SERVICE_URL}/auth/me`,
+  },
+
   // School Registration endpoints (Python FastAPI service)
   schools: {
     list: `${TTS_SERVICE_URL}/registered-schools`,

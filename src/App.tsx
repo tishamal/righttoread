@@ -6,7 +6,10 @@ import AnalyticsDashboard from './components/AnalyticsDashboard';
 import DigitalVersionReview from './components/DigitalVersionReview';
 import PictureDictionary from './components/PictureDictionary';
 import SchoolRegistration from './components/SchoolRegistration';
+import UserManagement from './components/UserManagement';
+import Profile from './components/Profile';
 import { booksAPI, ttsAPI, analyticsAPI } from './services/api';
+import { authAPI } from './services/authAPI';
 import { OverviewStats, SchoolMetrics } from './types/analytics';
 import {
   Box,
@@ -54,6 +57,7 @@ import {
   Audiotrack as AudioIcon,
   Collections as DictionaryIcon,
   School as SchoolIcon,
+  ManageAccounts as ManageAccountsIcon,
 } from '@mui/icons-material';
 import { styled, alpha } from '@mui/material/styles';
 
@@ -226,8 +230,8 @@ function App() {
     { text: 'Digital Review', icon: <AudioIcon />, id: 'DigitalReview' },
     { text: 'Picture Dictionary', icon: <DictionaryIcon />, id: 'PictureDictionary' },
     { text: 'School Registration', icon: <SchoolIcon />, id: 'SchoolRegistration' },
+    { text: 'User Management', icon: <ManageAccountsIcon />, id: 'UserManagement' },
     { text: 'Account', icon: <AccountIcon />, id: 'Account' },
-    { text: 'Settings', icon: <SettingsIcon />, id: 'Settings' },
   ];
 
   // Fetch books from API when authenticated
@@ -385,15 +389,13 @@ function App() {
     }
   };
 
-  const handleLogin = (email: string, password: string) => {
-    // Simple authentication - in a real app, this would call an API
-    if (email && password) {
-      setIsAuthenticated(true);
-      setCurrentUser(email);
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('currentUser', email);
-      console.log('User logged in:', email);
-    }
+  const handleLogin = (username: string) => {
+    setIsAuthenticated(true);
+    setCurrentUser(username);
+    setCurrentPage('Dashboard');
+    localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('currentUser', username);
+    localStorage.setItem('activePage', 'Dashboard');
   };
 
   const handleLogout = () => {
@@ -402,6 +404,7 @@ function App() {
     setCurrentPage('Dashboard');
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('currentUser');
+    authAPI.clearTokens();
   };
 
   const filteredBooks = selectedGrade === 'All Grades' 
@@ -433,6 +436,10 @@ function App() {
         );
       case 'SchoolRegistration':
         return <SchoolRegistration />;
+      case 'UserManagement':
+        return <UserManagement />;
+      case 'Account':
+        return <Profile currentUser={currentUser} />;
       case 'Dashboard':
       default:
         return (

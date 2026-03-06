@@ -20,6 +20,11 @@ import {
   Divider,
   Stack,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -67,6 +72,9 @@ const SchoolRegistration: React.FC = () => {
   const [form, setForm] = useState<SchoolFormData>(emptyForm());
   const [editingId, setEditingId] = useState<number | null>(null);
   const [errors, setErrors] = useState<Partial<SchoolFormData>>({});
+
+  // Delete confirmation dialog
+  const [deleteTarget, setDeleteTarget] = useState<RegisteredSchool | null>(null);
 
   // Snackbar
   const [snackbar, setSnackbar] = useState<{
@@ -190,8 +198,14 @@ const SchoolRegistration: React.FC = () => {
     setErrors({});
   };
 
-  const handleDelete = async (school: RegisteredSchool) => {
-    if (!window.confirm(`Delete "${school.school_name}"? This cannot be undone.`)) return;
+  const handleDelete = (school: RegisteredSchool) => {
+    setDeleteTarget(school);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    const school = deleteTarget;
+    setDeleteTarget(null);
     try {
       await schoolsAPI.delete(school.id);
       if (editingId === school.id) resetForm();
@@ -502,6 +516,27 @@ const SchoolRegistration: React.FC = () => {
           </Box>
         </Paper>
       </Box>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Delete School</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Delete &ldquo;<strong>{deleteTarget?.school_name}</strong>&rdquo;? This cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)}>Cancel</Button>
+          <Button onClick={confirmDelete} color="error" variant="contained" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Snackbar */}
       <Snackbar
