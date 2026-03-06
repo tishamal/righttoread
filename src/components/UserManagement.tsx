@@ -18,6 +18,10 @@ import {
   Stack,
   Chip,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import {
   PersonAdd as PersonAddIcon,
@@ -129,9 +133,16 @@ const UserManagement: React.FC = () => {
   // ---------------------------------------------------------------------------
   // Delete handler
   // ---------------------------------------------------------------------------
-  const handleDelete = async () => {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  const handleDelete = () => {
     if (!selectedUser) return;
-    if (!window.confirm(`Delete user "${selectedUser.username}"? This cannot be undone.`)) return;
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedUser) return;
+    setDeleteDialogOpen(false);
     try {
       setDeleting(true);
       await usersAPI.delete(selectedUser.username);
@@ -486,6 +497,38 @@ const UserManagement: React.FC = () => {
           </Box>
         </Paper>
       </Box>
+
+      {/* Delete User Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <DeleteIcon color="error" />
+          Delete User?
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Delete user "{selectedUser?.username}"? This cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDeleteDialogOpen(false)} color="inherit">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            variant="contained"
+            color="error"
+            startIcon={<DeleteIcon />}
+            autoFocus
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Snackbar */}
       <Snackbar

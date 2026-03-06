@@ -425,7 +425,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     '&:hover': { backgroundColor: '#5b5ad6' },
                   }}
                 >
-                  {loading ? 'Signing in...' : 'Continue'}
+                  {loading ? 'Signing in...' : 'Sign In'}
                 </Button>
               </form>
             </LoginCard>
