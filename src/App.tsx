@@ -8,6 +8,7 @@ import PictureDictionary from './components/PictureDictionary';
 import SchoolRegistration from './components/SchoolRegistration';
 import UserManagement from './components/UserManagement';
 import { booksAPI, ttsAPI, analyticsAPI } from './services/api';
+import { authAPI } from './services/authAPI';
 import { OverviewStats, SchoolMetrics } from './types/analytics';
 import {
   Box,
@@ -387,15 +388,13 @@ function App() {
     }
   };
 
-  const handleLogin = (email: string, password: string) => {
-    // Simple authentication - in a real app, this would call an API
-    if (email && password) {
-      setIsAuthenticated(true);
-      setCurrentUser(email);
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('currentUser', email);
-      console.log('User logged in:', email);
-    }
+  const handleLogin = (username: string) => {
+    setIsAuthenticated(true);
+    setCurrentUser(username);
+    setCurrentPage('Dashboard');
+    localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('currentUser', username);
+    localStorage.setItem('activePage', 'Dashboard');
   };
 
   const handleLogout = () => {
@@ -404,6 +403,7 @@ function App() {
     setCurrentPage('Dashboard');
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('currentUser');
+    authAPI.clearTokens();
   };
 
   const filteredBooks = selectedGrade === 'All Grades' 

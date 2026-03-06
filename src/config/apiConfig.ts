@@ -49,6 +49,12 @@ export const API_ENDPOINTS = {
     create: `${TTS_SERVICE_URL}/users`,
   },
 
+  // Auth endpoints (Cognito via Python FastAPI service)
+  auth: {
+    login:       `${TTS_SERVICE_URL}/auth/login`,
+    setPassword: `${TTS_SERVICE_URL}/auth/set-password`,
+  },
+
   // School Registration endpoints (Python FastAPI service)
   schools: {
     list: `${TTS_SERVICE_URL}/registered-schools`,
