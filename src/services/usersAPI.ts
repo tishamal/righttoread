@@ -59,4 +59,8 @@ export const usersAPI = {
     const response = await httpClient.post<UserRecord>(API_ENDPOINTS.users.create, data);
     return response;
   },
+
+  async delete(username: string): Promise<void> {
+    await httpClient.delete(`${API_ENDPOINTS.users.list}/${encodeURIComponent(username)}`);
+  },
 };

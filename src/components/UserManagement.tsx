@@ -24,6 +24,7 @@ import {
   ManageAccounts as ManageAccountsIcon,
   Search as SearchIcon,
   Clear as ClearIcon,
+  DeleteOutline as DeleteIcon,
 } from '@mui/icons-material';
 import { usersAPI, UserRecord, UserFormData } from '../services/usersAPI';
 
@@ -59,6 +60,10 @@ const UserManagement: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<UserFormData>(emptyForm());
   const [errors, setErrors] = useState<Partial<UserFormData>>({});
+
+  // Row selection + delete
+  const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Snackbar
   const [snackbar, setSnackbar] = useState<{
@@ -117,6 +122,25 @@ const UserManagement: React.FC = () => {
     setSearchInput('');
     setCommittedSearch('');
     setPage(0);
+  };
+
+  // ---------------------------------------------------------------------------
+  // Delete handler
+  // ---------------------------------------------------------------------------
+  const handleDelete = async () => {
+    if (!selectedUser) return;
+    if (!window.confirm(`Delete user "${selectedUser.username}"? This cannot be undone.`)) return;
+    try {
+      setDeleting(true);
+      await usersAPI.delete(selectedUser.username);
+      setSelectedUser(null);
+      showSnackbar(`User "${selectedUser.username}" has been deleted.`, 'success');
+      await loadUsers(committedSearch);
+    } catch {
+      showSnackbar('Failed to delete user. Please try again.', 'error');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -214,6 +238,16 @@ const UserManagement: React.FC = () => {
             color="primary"
             variant="outlined"
           />
+          <Button
+            variant="outlined"
+            color="error"
+            size="small"
+            startIcon={deleting ? <CircularProgress size={14} color="inherit" /> : <DeleteIcon />}
+            disabled={!selectedUser || deleting}
+            onClick={handleDelete}
+          >
+            Delete User
+          </Button>
         </Box>
       </Box>
 
@@ -263,7 +297,13 @@ const UserManagement: React.FC = () => {
                       </TableRow>
                     ) : (
                       visibleUsers.map((user) => (
-                        <TableRow key={user.sub} hover>
+                        <TableRow
+                          key={user.sub}
+                          hover
+                          selected={selectedUser?.sub === user.sub}
+                          onClick={() => setSelectedUser(prev => prev?.sub === user.sub ? null : user)}
+                          sx={{ cursor: 'pointer' }}
+                        >
                           <TableCell sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {user.first_name}
                           </TableCell>
@@ -285,7 +325,11 @@ const UserManagement: React.FC = () => {
                           <TableCell>
                             <Chip
                               label={user.status}
-                              color={user.status === 'CONFIRMED' ? 'success' : 'warning'}
+                              color={
+                                user.status === 'DELETED' ? 'error'
+                                : user.status === 'CONFIRMED' ? 'success'
+                                : 'warning'
+                              }
                               size="small"
                               variant="outlined"
                             />
