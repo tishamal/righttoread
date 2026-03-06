@@ -6,6 +6,7 @@ import AnalyticsDashboard from './components/AnalyticsDashboard';
 import DigitalVersionReview from './components/DigitalVersionReview';
 import PictureDictionary from './components/PictureDictionary';
 import SchoolRegistration from './components/SchoolRegistration';
+import UserManagement from './components/UserManagement';
 import { booksAPI, ttsAPI, analyticsAPI } from './services/api';
 import { OverviewStats, SchoolMetrics } from './types/analytics';
 import {
@@ -54,6 +55,7 @@ import {
   Audiotrack as AudioIcon,
   Collections as DictionaryIcon,
   School as SchoolIcon,
+  ManageAccounts as ManageAccountsIcon,
 } from '@mui/icons-material';
 import { styled, alpha } from '@mui/material/styles';
 
@@ -226,8 +228,8 @@ function App() {
     { text: 'Digital Review', icon: <AudioIcon />, id: 'DigitalReview' },
     { text: 'Picture Dictionary', icon: <DictionaryIcon />, id: 'PictureDictionary' },
     { text: 'School Registration', icon: <SchoolIcon />, id: 'SchoolRegistration' },
+    { text: 'User Management', icon: <ManageAccountsIcon />, id: 'UserManagement' },
     { text: 'Account', icon: <AccountIcon />, id: 'Account' },
-    { text: 'Settings', icon: <SettingsIcon />, id: 'Settings' },
   ];
 
   // Fetch books from API when authenticated
@@ -433,6 +435,8 @@ function App() {
         );
       case 'SchoolRegistration':
         return <SchoolRegistration />;
+      case 'UserManagement':
+        return <UserManagement />;
       case 'Dashboard':
       default:
         return (
