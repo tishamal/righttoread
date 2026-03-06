@@ -7,6 +7,7 @@ import DigitalVersionReview from './components/DigitalVersionReview';
 import PictureDictionary from './components/PictureDictionary';
 import SchoolRegistration from './components/SchoolRegistration';
 import UserManagement from './components/UserManagement';
+import Profile from './components/Profile';
 import { booksAPI, ttsAPI, analyticsAPI } from './services/api';
 import { authAPI } from './services/authAPI';
 import { OverviewStats, SchoolMetrics } from './types/analytics';
@@ -437,6 +438,8 @@ function App() {
         return <SchoolRegistration />;
       case 'UserManagement':
         return <UserManagement />;
+      case 'Account':
+        return <Profile currentUser={currentUser} />;
       case 'Dashboard':
       default:
         return (
