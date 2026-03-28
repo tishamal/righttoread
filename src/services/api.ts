@@ -432,6 +432,16 @@ export const ttsAPI = {
       throw error;
     }
   },
+
+  async generateDictionary(bookId: string | number): Promise<any> {
+    try {
+      const data = await httpClient.post<any>(API_ENDPOINTS.tts.generateDictionary(bookId), {});
+      return data;
+    } catch (error) {
+      console.error('Error generating dictionary:', error);
+      throw error;
+    }
+  },
 };
 
 export interface PendingBook {
