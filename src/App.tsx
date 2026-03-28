@@ -11,6 +11,7 @@ import Profile from './components/Profile';
 import GenerateDictionaryModal from './components/GenerateDictionaryModal';
 import GenerateAudioLibraryModal from './components/GenerateAudioLibraryModal';
 import AudioLibraryList from './components/AudioLibraryList';
+import BookDictionary from './components/BookDictionary';
 import { booksAPI, ttsAPI, analyticsAPI } from './services/api';
 import { authAPI } from './services/authAPI';
 import { OverviewStats, SchoolMetrics } from './types/analytics';
@@ -235,6 +236,7 @@ function App() {
     { text: 'Digital Review', icon: <AudioIcon />, id: 'DigitalReview' },
     { text: 'Audio Library', icon: <AudioIcon />, id: 'AudioLibrary' },
     { text: 'Picture Dictionary', icon: <DictionaryIcon />, id: 'PictureDictionary' },
+    { text: 'Dictionary', icon: <BookIcon />, id: 'Dictionary' },
     { text: 'School Registration', icon: <SchoolIcon />, id: 'SchoolRegistration' },
     { text: 'User Management', icon: <ManageAccountsIcon />, id: 'UserManagement' },
     { text: 'Account', icon: <AccountIcon />, id: 'Account' },
@@ -474,6 +476,14 @@ function App() {
         return (
           <PictureDictionary
             onShowNotification={(message, severity) => setUploadStatus({ open: true, message, severity })}
+          />
+        );
+      case 'Dictionary':
+        return (
+          <BookDictionary
+            onShowNotification={(message, severity) =>
+              setUploadStatus({ open: true, message, severity: severity as 'success' | 'error' | 'info' })
+            }
           />
         );
       case 'SchoolRegistration':

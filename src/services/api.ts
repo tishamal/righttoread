@@ -649,4 +649,50 @@ const api = {
   pictureDictionaryAPI,
 };
 
+// ---------------------------------------------------------------------------
+// Book Word Dictionary API
+// ---------------------------------------------------------------------------
+
+export interface DictionaryWord {
+  word: string;
+  type?: string;
+  sinhala_translation?: string;
+  tamil_translation?: string;
+  simple_definition?: string;
+  contexts?: string[];
+}
+
+export interface DictionaryWordUpdate {
+  sinhala_translation?: string;
+  tamil_translation?: string;
+  simple_definition?: string;
+}
+
+export const bookDictionaryAPI = {
+  async getByBook(bookName: string): Promise<DictionaryWord[]> {
+    try {
+      const data = await httpClient.get<{ book_name: string; total_words: number; dictionary: DictionaryWord[] }>(
+        API_ENDPOINTS.bookDictionary(bookName)
+      );
+      return data.dictionary || [];
+    } catch (error) {
+      console.error('Error fetching book dictionary:', error);
+      throw error;
+    }
+  },
+
+  async updateWord(bookName: string, word: string, payload: DictionaryWordUpdate): Promise<DictionaryWord> {
+    try {
+      const data = await httpClient.put<DictionaryWord>(
+        API_ENDPOINTS.updateDictionaryWord(bookName, word),
+        payload
+      );
+      return data;
+    } catch (error) {
+      console.error('Error updating dictionary word:', error);
+      throw error;
+    }
+  },
+};
+
 export default api;
