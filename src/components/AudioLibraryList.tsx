@@ -12,12 +12,14 @@ import {
   CircularProgress,
   Paper,
   Divider,
+  Button,
 } from '@mui/material';
 import {
   Search as SearchIcon,
   PlayArrow as PlayArrowIcon,
   Pause as PauseIcon,
   VolumeUp as VolumeUpIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { audioLibraryAPI } from '../services/api';
 
@@ -50,6 +52,11 @@ const AudioLibraryList: React.FC<AudioLibraryListProps> = ({ onShowNotification 
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRefresh = () => {
+    audioLibraryAPI.invalidateCache();
+    fetchLibrary();
   };
 
   useEffect(() => {
@@ -127,12 +134,21 @@ const AudioLibraryList: React.FC<AudioLibraryListProps> = ({ onShowNotification 
           gap: 2,
         }}
       >
-        <Typography variant="body2" color="textSecondary">
-          {items.length} word{items.length !== 1 ? 's' : ''} in library
-          {searchQuery && filteredItems.length !== items.length
-            ? ` · ${filteredItems.length} matching`
-            : ''}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="body2" color="textSecondary">
+            {items.length} word{items.length !== 1 ? 's' : ''} in library
+            {searchQuery && filteredItems.length !== items.length
+              ? ` · ${filteredItems.length} matching`
+              : ''}
+          </Typography>
+          <Tooltip title="Refresh library">
+            <span>
+              <IconButton size="small" onClick={handleRefresh} disabled={loading}>
+                {loading ? <CircularProgress size={16} /> : <RefreshIcon fontSize="small" />}
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
 
         <TextField
           variant="outlined"

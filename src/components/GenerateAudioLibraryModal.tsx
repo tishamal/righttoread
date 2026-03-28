@@ -15,7 +15,7 @@ import {
   Box,
 } from '@mui/material';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
-import { ttsAPI } from '../services/api';
+import { ttsAPI, audioLibraryAPI } from '../services/api';
 
 interface Book {
   id: number;
@@ -67,6 +67,8 @@ const GenerateAudioLibraryModal: React.FC<GenerateAudioLibraryModalProps> = ({
     setSubmitting(true);
     try {
       await ttsAPI.generateAudioLibrary(selectedBookId);
+      // Bust the cache so the list shows fresh data after generation completes
+      audioLibraryAPI.invalidateCache();
       onShowNotification('Audio library generation started in the background.', 'success');
       onClose();
     } catch (err: any) {
