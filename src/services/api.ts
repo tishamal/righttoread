@@ -668,6 +668,14 @@ export interface DictionaryWordUpdate {
   simple_definition?: string;
 }
 
+export interface DictionaryWordCreate {
+  word: string;
+  type?: string;
+  sinhala_translation?: string;
+  tamil_translation?: string;
+  simple_definition?: string;
+}
+
 export const bookDictionaryAPI = {
   async getByBook(bookName: string): Promise<DictionaryWord[]> {
     try {
@@ -690,6 +698,19 @@ export const bookDictionaryAPI = {
       return data;
     } catch (error) {
       console.error('Error updating dictionary word:', error);
+      throw error;
+    }
+  },
+
+  async addWord(bookName: string, payload: DictionaryWordCreate): Promise<DictionaryWord> {
+    try {
+      const data = await httpClient.post<DictionaryWord>(
+        API_ENDPOINTS.bookDictionary(bookName),
+        payload
+      );
+      return data;
+    } catch (error) {
+      console.error('Error adding dictionary word:', error);
       throw error;
     }
   },
