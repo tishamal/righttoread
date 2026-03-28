@@ -17,6 +17,7 @@ import {
   TablePagination,
   IconButton,
   TextField,
+  InputAdornment,
   CircularProgress,
   Tooltip,
   Stack,
@@ -28,6 +29,7 @@ import {
   Save as SaveIcon,
   Cancel as CancelIcon,
   MenuBook as MenuBookIcon,
+  Clear as ClearIcon,
 } from '@mui/icons-material';
 import { bookDictionaryAPI, ttsAPI, DictionaryWord, DictionaryWordUpdate } from '../services/api';
 
@@ -58,6 +60,9 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification }) =
 
   // Inline edit state: keyed by word string
   const [editingWord, setEditingWord] = useState<string | null>(null);
+
+  // Word filter
+  const [wordFilter, setWordFilter] = useState<string>('');
   const [editValues, setEditValues] = useState<EditState>({ sinhala_translation: '', tamil_translation: '', simple_definition: '' });
   const [saving, setSaving] = useState(false);
 
@@ -87,6 +92,7 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification }) =
     setSearched(true);
     setPage(0);
     setEditingWord(null);
+    setWordFilter('');
     try {
       const data = await bookDictionaryAPI.getByBook(selectedSlug);
       setWords(data);
@@ -130,7 +136,11 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification }) =
     }
   };
 
-  const paginatedWords = words.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  const filteredWords = wordFilter.trim()
+    ? words.filter((w) => w.word.toLowerCase().includes(wordFilter.trim().toLowerCase()))
+    : words;
+
+  const paginatedWords = filteredWords.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   return (
     <Box className="fade-in">
@@ -142,7 +152,7 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification }) =
         {searched && words.length > 0 && (
           <Chip
             icon={<MenuBookIcon />}
-            label={`${words.length} words`}
+            label={wordFilter.trim() ? `${filteredWords.length} / ${words.length} words` : `${words.length} words`}
             color="primary"
             variant="outlined"
           />
@@ -187,6 +197,34 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification }) =
           >
             {dictLoading ? 'Loading…' : 'Search'}
           </Button>
+
+          {/* Word search — right side */}
+          <Box sx={{ flexGrow: 1 }} />
+          <TextField
+            size="small"
+            placeholder="Search word…"
+            value={wordFilter}
+            onChange={(e) => {
+              setWordFilter(e.target.value);
+              setPage(0);
+            }}
+            disabled={!searched || words.length === 0}
+            sx={{ minWidth: 220 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" color="action" />
+                </InputAdornment>
+              ),
+              endAdornment: wordFilter ? (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={() => { setWordFilter(''); setPage(0); }}>
+                    <ClearIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ) : null,
+            }}
+          />
         </Stack>
       </Paper>
 
@@ -341,7 +379,7 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification }) =
               </TableContainer>
               <TablePagination
                 component="div"
-                count={words.length}
+                count={filteredWords.length}
                 page={page}
                 onPageChange={(_, newPage) => setPage(newPage)}
                 rowsPerPage={rowsPerPage}
