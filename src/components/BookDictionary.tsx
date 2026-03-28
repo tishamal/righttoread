@@ -22,6 +22,10 @@ import {
   Tooltip,
   Stack,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -30,8 +34,9 @@ import {
   Cancel as CancelIcon,
   MenuBook as MenuBookIcon,
   Clear as ClearIcon,
+  AddCircleOutline as AddIcon,
 } from '@mui/icons-material';
-import { bookDictionaryAPI, ttsAPI, DictionaryWord, DictionaryWordUpdate } from '../services/api';
+import { bookDictionaryAPI, ttsAPI, DictionaryWord, DictionaryWordUpdate, DictionaryWordCreate } from '../services/api';
 
 interface BookDictionaryProps {
   onShowNotification: (message: string, severity: 'success' | 'error' | 'info') => void;
@@ -65,6 +70,11 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification }) =
   const [wordFilter, setWordFilter] = useState<string>('');
   const [editValues, setEditValues] = useState<EditState>({ sinhala_translation: '', tamil_translation: '', simple_definition: '' });
   const [saving, setSaving] = useState(false);
+
+  // Add word dialog
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [addForm, setAddForm] = useState<DictionaryWordCreate>({ word: '', type: '', sinhala_translation: '', tamil_translation: '', simple_definition: '' });
+  const [adding, setAdding] = useState(false);
 
   // Load completed books on mount (same source as Audio Library feature)
   useEffect(() => {
@@ -142,6 +152,37 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification }) =
 
   const paginatedWords = filteredWords.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
+  const openAddDialog = () => {
+    setAddForm({ word: '', type: '', sinhala_translation: '', tamil_translation: '', simple_definition: '' });
+    setAddDialogOpen(true);
+  };
+
+  const handleAddWord = async () => {
+    if (!addForm.word.trim()) {
+      onShowNotification('Word is required.', 'info');
+      return;
+    }
+    setAdding(true);
+    try {
+      const created = await bookDictionaryAPI.addWord(selectedSlug, {
+        ...addForm,
+        word: addForm.word.trim(),
+      });
+      setWords((prev) => [...prev, created]);
+      onShowNotification(`"${created.word}" added to the dictionary.`, 'success');
+      setAddDialogOpen(false);
+    } catch (err: any) {
+      const detail = err?.message || '';
+      if (detail.includes('409') || detail.toLowerCase().includes('already exists')) {
+        onShowNotification(`"${addForm.word}" already exists in the dictionary.`, 'error');
+      } else {
+        onShowNotification(`Failed to add word.`, 'error');
+      }
+    } finally {
+      setAdding(false);
+    }
+  };
+
   return (
     <Box className="fade-in">
       {/* Header */}
@@ -149,14 +190,27 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification }) =
         <Typography variant="h4" fontWeight="bold">
           Dictionary
         </Typography>
-        {searched && words.length > 0 && (
-          <Chip
-            icon={<MenuBookIcon />}
-            label={wordFilter.trim() ? `${filteredWords.length} / ${words.length} words` : `${words.length} words`}
-            color="primary"
-            variant="outlined"
-          />
-        )}
+        <Stack direction="row" spacing={2} alignItems="center">
+          {searched && words.length > 0 && (
+            <Chip
+              icon={<MenuBookIcon />}
+              label={wordFilter.trim() ? `${filteredWords.length} / ${words.length} words` : `${words.length} words`}
+              color="primary"
+              variant="outlined"
+            />
+          )}
+          {searched && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={openAddDialog}
+              disabled={!selectedSlug}
+              sx={{ textTransform: 'none' }}
+            >
+              Add Word
+            </Button>
+          )}
+        </Stack>
       </Box>
 
       {/* Book selector + Search */}
@@ -400,6 +454,68 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification }) =
           <Typography color="textSecondary">Select a book and click Search to view its dictionary.</Typography>
         </Box>
       )}
+
+      {/* Add Word Dialog */}
+      <Dialog open={addDialogOpen} onClose={() => !adding && setAddDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Add New Word</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Word"
+              value={addForm.word}
+              onChange={(e) => setAddForm((f) => ({ ...f, word: e.target.value }))}
+              size="small"
+              required
+              fullWidth
+              autoFocus
+            />
+            <TextField
+              label="Type (e.g. noun, verb)"
+              value={addForm.type ?? ''}
+              onChange={(e) => setAddForm((f) => ({ ...f, type: e.target.value }))}
+              size="small"
+              fullWidth
+            />
+            <TextField
+              label="Sinhala Meaning"
+              value={addForm.sinhala_translation ?? ''}
+              onChange={(e) => setAddForm((f) => ({ ...f, sinhala_translation: e.target.value }))}
+              size="small"
+              fullWidth
+            />
+            <TextField
+              label="Tamil Meaning"
+              value={addForm.tamil_translation ?? ''}
+              onChange={(e) => setAddForm((f) => ({ ...f, tamil_translation: e.target.value }))}
+              size="small"
+              fullWidth
+            />
+            <TextField
+              label="Simple Definition"
+              value={addForm.simple_definition ?? ''}
+              onChange={(e) => setAddForm((f) => ({ ...f, simple_definition: e.target.value }))}
+              size="small"
+              fullWidth
+              multiline
+              rows={2}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setAddDialogOpen(false)} disabled={adding} sx={{ textTransform: 'none' }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleAddWord}
+            disabled={adding || !addForm.word.trim()}
+            startIcon={adding ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}
+            sx={{ textTransform: 'none' }}
+          >
+            {adding ? 'Adding…' : 'Add Word'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
