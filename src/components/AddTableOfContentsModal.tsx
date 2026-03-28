@@ -72,7 +72,7 @@ const AddTableOfContentsModal: React.FC<AddTableOfContentsModalProps> = ({
       try {
         const existing = await tocAPI.getTableOfContents(selectedBookId);
         if (existing.length > 0) {
-          setEntries(existing);
+          setEntries(existing.map((e) => ({ ...e, page_number: e.page_number + 1 })));
         } else {
           setEntries([emptyEntry()]);
         }
@@ -128,7 +128,7 @@ const AddTableOfContentsModal: React.FC<AddTableOfContentsModalProps> = ({
       return;
     }
 
-    const numbered = entries.map((e, i) => ({ ...e, order_index: i }));
+    const numbered = entries.map((e, i) => ({ ...e, order_index: i, page_number: e.page_number - 1 }));
 
     setSubmitting(true);
     try {
