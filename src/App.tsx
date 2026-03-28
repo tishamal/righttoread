@@ -9,6 +9,7 @@ import SchoolRegistration from './components/SchoolRegistration';
 import UserManagement from './components/UserManagement';
 import Profile from './components/Profile';
 import GenerateDictionaryModal from './components/GenerateDictionaryModal';
+import GenerateAudioLibraryModal from './components/GenerateAudioLibraryModal';
 import { booksAPI, ttsAPI, analyticsAPI } from './services/api';
 import { authAPI } from './services/authAPI';
 import { OverviewStats, SchoolMetrics } from './types/analytics';
@@ -225,6 +226,7 @@ function App() {
   const [overviewStats, setOverviewStats] = useState<OverviewStats | null>(null);
   const [activeSchools, setActiveSchools] = useState<SchoolMetrics[]>([]);
   const [generateDictionaryModalOpen, setGenerateDictionaryModalOpen] = useState(false);
+  const [generateAudioLibraryModalOpen, setGenerateAudioLibraryModalOpen] = useState(false);
 
   const navigationItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, id: 'Dashboard' },
@@ -451,6 +453,7 @@ function App() {
                   variant="contained"
                   startIcon={<AudioIcon />}
                   sx={{ textTransform: 'none' }}
+                  onClick={() => setGenerateAudioLibraryModalOpen(true)}
                 >
                   Generate Audio Library
                 </Button>
@@ -759,6 +762,15 @@ function App() {
         <GenerateDictionaryModal
           open={generateDictionaryModalOpen}
           onClose={() => setGenerateDictionaryModalOpen(false)}
+          onShowNotification={(message, severity) =>
+            setUploadStatus({ open: true, message, severity: severity as 'success' | 'error' | 'info' })
+          }
+        />
+
+        {/* Generate Audio Library Modal */}
+        <GenerateAudioLibraryModal
+          open={generateAudioLibraryModalOpen}
+          onClose={() => setGenerateAudioLibraryModalOpen(false)}
           onShowNotification={(message, severity) =>
             setUploadStatus({ open: true, message, severity: severity as 'success' | 'error' | 'info' })
           }

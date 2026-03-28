@@ -442,6 +442,16 @@ export const ttsAPI = {
       throw error;
     }
   },
+
+  async generateAudioLibrary(bookId: string | number): Promise<any> {
+    try {
+      const data = await httpClient.post<any>(API_ENDPOINTS.tts.generateAudioLibrary(bookId), {});
+      return data;
+    } catch (error) {
+      console.error('Error generating audio library:', error);
+      throw error;
+    }
+  },
 };
 
 export interface PendingBook {

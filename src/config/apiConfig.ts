@@ -79,6 +79,7 @@ export const API_ENDPOINTS = {
       `${TTS_SERVICE_URL}/digital-review/books/${bookId}/pages/${pageId}/approve`,
     regeneratePage: `${TTS_SERVICE_URL}/tts/regenerate-page`,
     generateDictionary: (bookId: string | number) => `${TTS_SERVICE_URL}/books/${bookId}/generate-dictionary`,
+    generateAudioLibrary: (bookId: string | number) => `${TTS_SERVICE_URL}/books/${bookId}/generate-audio-library`,
   },
 };
 
