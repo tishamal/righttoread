@@ -40,12 +40,14 @@ export const API_ENDPOINTS = {
   // Picture Dictionary
   dictionary: {
     list: `${TTS_SERVICE_URL}/dictionary`,
+    download: (word: string) => `${TTS_SERVICE_URL}/dictionary/download?word=${encodeURIComponent(word)}`,
     addWord: `${TTS_SERVICE_URL}/dictionary/add`,
   },
 
   // Audio Library
   audioLibrary: {
     list: `${TTS_SERVICE_URL}/audio-library/`,
+    download: (word: string) => `${TTS_SERVICE_URL}/audio-library/download?word=${encodeURIComponent(word)}`,
   },
 
   // User Management endpoints (Cognito via Python FastAPI service)

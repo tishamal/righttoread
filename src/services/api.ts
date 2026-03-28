@@ -498,10 +498,16 @@ export const pictureDictionaryAPI = {
         try {
           const parsed = JSON.parse(cached);
           if (parsed && Array.isArray(parsed.data) && parsed.timestamp) {
-            // Check if cache is still valid
-            if (Date.now() - parsed.timestamp < CACHE_TTL_MS) {
+            // Invalidate if cache contains old presigned-URL shape or unmapped s3Key
+            const firstItem = parsed.data[0];
+            const isStaleShape = firstItem && (
+              (firstItem.imageUrl && firstItem.imageUrl.startsWith('https://')) ||
+              firstItem.s3Key
+            );
+            if (!isStaleShape && Date.now() - parsed.timestamp < CACHE_TTL_MS) {
               return parsed.data;
             }
+            localStorage.removeItem(DICTIONARY_CACHE_KEY);
           }
         } catch (e) {
           // Invalid JSON in cache, ignore and fetch fresh data
@@ -509,9 +515,19 @@ export const pictureDictionaryAPI = {
         }
       }
 
-      // Fetch from API if cache miss or expired
-      const data = await httpClient.get<{ word: string; imageUrl: string }[]>(API_ENDPOINTS.dictionary.list);
-      
+      const rawData = await httpClient.get<{ word: string; s3Key?: string; imageUrl?: string; timestamp: string }[]>(
+        API_ENDPOINTS.dictionary.list
+      );
+
+      // Backend now returns s3Key instead of a presigned imageUrl.
+      // Map each entry to use the server-side proxy download endpoint.
+      const data = Array.isArray(rawData)
+        ? rawData.map((item) => ({
+            word: item.word,
+            imageUrl: API_ENDPOINTS.dictionary.download(item.word),
+          }))
+        : [];
+
       // Update cache
       if (Array.isArray(data)) {
         localStorage.setItem(DICTIONARY_CACHE_KEY, JSON.stringify({
@@ -562,24 +578,43 @@ const AUDIO_LIBRARY_CACHE_KEY = 'audio_library_cache';
 export const audioLibraryAPI = {
   async getAll(): Promise<{ word: string; audioUrl: string; timestamp: string }[]> {
     try {
-      // Check cache (50-min TTL, safely under the 1-hour presigned URL expiry)
+      // Check cache (50-min TTL)
       const cached = localStorage.getItem(AUDIO_LIBRARY_CACHE_KEY);
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
           if (parsed && Array.isArray(parsed.data) && parsed.timestamp) {
-            if (Date.now() - parsed.timestamp < CACHE_TTL_MS) {
+            // Invalidate if cache contains old presigned-URL shape (audioUrl starts with https)
+            // or the new s3Key shape that hasn't been mapped yet.
+            const firstItem = parsed.data[0];
+            const isStaleShape = firstItem && (
+              (firstItem.audioUrl && firstItem.audioUrl.startsWith('https://')) ||
+              firstItem.s3Key
+            );
+            if (!isStaleShape && Date.now() - parsed.timestamp < CACHE_TTL_MS) {
               return parsed.data;
             }
+            localStorage.removeItem(AUDIO_LIBRARY_CACHE_KEY);
           }
         } catch (e) {
           localStorage.removeItem(AUDIO_LIBRARY_CACHE_KEY);
         }
       }
 
-      const data = await httpClient.get<{ word: string; audioUrl: string; timestamp: string }[]>(
+      const rawData = await httpClient.get<{ word: string; s3Key?: string; audioUrl?: string; timestamp: string }[]>(
         API_ENDPOINTS.audioLibrary.list
       );
+
+      // Backend now returns s3Key instead of a presigned audioUrl.
+      // Map each entry to use the server-side proxy download endpoint so that
+      // credentials never expire in the browser.
+      const data = Array.isArray(rawData)
+        ? rawData.map((item) => ({
+            word: item.word,
+            audioUrl: API_ENDPOINTS.audioLibrary.download(item.word),
+            timestamp: item.timestamp,
+          }))
+        : [];
 
       if (Array.isArray(data)) {
         localStorage.setItem(AUDIO_LIBRARY_CACHE_KEY, JSON.stringify({
