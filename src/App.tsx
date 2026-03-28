@@ -10,6 +10,7 @@ import UserManagement from './components/UserManagement';
 import Profile from './components/Profile';
 import GenerateDictionaryModal from './components/GenerateDictionaryModal';
 import GenerateAudioLibraryModal from './components/GenerateAudioLibraryModal';
+import AudioLibraryList from './components/AudioLibraryList';
 import { booksAPI, ttsAPI, analyticsAPI } from './services/api';
 import { authAPI } from './services/authAPI';
 import { OverviewStats, SchoolMetrics } from './types/analytics';
@@ -461,12 +462,11 @@ function App() {
             </Box>
 
             <Paper sx={{ p: 4, borderRadius: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Audio Content
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                Manage and generate audio library assets from digitized books in this section.
-              </Typography>
+              <AudioLibraryList
+                onShowNotification={(message, severity) =>
+                  setUploadStatus({ open: true, message, severity: severity as 'success' | 'error' | 'info' })
+                }
+              />
             </Paper>
           </Box>
         );

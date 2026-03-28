@@ -43,6 +43,11 @@ export const API_ENDPOINTS = {
     addWord: `${TTS_SERVICE_URL}/dictionary/add`,
   },
 
+  // Audio Library
+  audioLibrary: {
+    list: `${TTS_SERVICE_URL}/audio-library/`,
+  },
+
   // User Management endpoints (Cognito via Python FastAPI service)
   users: {
     list: `${TTS_SERVICE_URL}/users`,

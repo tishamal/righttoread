@@ -556,6 +556,56 @@ export const pictureDictionaryAPI = {
   }
 };
 
+// Audio Library API
+const AUDIO_LIBRARY_CACHE_KEY = 'audio_library_cache';
+
+export const audioLibraryAPI = {
+  async getAll(): Promise<{ word: string; audioUrl: string; timestamp: string }[]> {
+    try {
+      // Check cache (50-min TTL, safely under the 1-hour presigned URL expiry)
+      const cached = localStorage.getItem(AUDIO_LIBRARY_CACHE_KEY);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed && Array.isArray(parsed.data) && parsed.timestamp) {
+            if (Date.now() - parsed.timestamp < CACHE_TTL_MS) {
+              return parsed.data;
+            }
+          }
+        } catch (e) {
+          localStorage.removeItem(AUDIO_LIBRARY_CACHE_KEY);
+        }
+      }
+
+      const data = await httpClient.get<{ word: string; audioUrl: string; timestamp: string }[]>(
+        API_ENDPOINTS.audioLibrary.list
+      );
+
+      if (Array.isArray(data)) {
+        localStorage.setItem(AUDIO_LIBRARY_CACHE_KEY, JSON.stringify({
+          data,
+          timestamp: Date.now(),
+        }));
+      }
+
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('Error fetching audio library:', error);
+      const cached = localStorage.getItem(AUDIO_LIBRARY_CACHE_KEY);
+      if (cached) {
+        try {
+          return JSON.parse(cached).data || [];
+        } catch (e) { /* ignore */ }
+      }
+      throw error;
+    }
+  },
+
+  invalidateCache() {
+    localStorage.removeItem(AUDIO_LIBRARY_CACHE_KEY);
+  },
+};
+
 const api = {
   booksAPI,
   analyticsAPI,
