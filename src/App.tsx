@@ -10,6 +10,7 @@ import UserManagement from './components/UserManagement';
 import Profile from './components/Profile';
 import GenerateDictionaryModal from './components/GenerateDictionaryModal';
 import GenerateAudioLibraryModal from './components/GenerateAudioLibraryModal';
+import AddTableOfContentsModal from './components/AddTableOfContentsModal';
 import AudioLibraryList from './components/AudioLibraryList';
 import BookDictionary from './components/BookDictionary';
 import { booksAPI, ttsAPI, analyticsAPI } from './services/api';
@@ -62,6 +63,7 @@ import {
   Collections as DictionaryIcon,
   School as SchoolIcon,
   ManageAccounts as ManageAccountsIcon,
+  FormatListNumbered as TOCIcon,
 } from '@mui/icons-material';
 import { styled, alpha } from '@mui/material/styles';
 
@@ -229,6 +231,7 @@ function App() {
   const [activeSchools, setActiveSchools] = useState<SchoolMetrics[]>([]);
   const [generateDictionaryModalOpen, setGenerateDictionaryModalOpen] = useState(false);
   const [generateAudioLibraryModalOpen, setGenerateAudioLibraryModalOpen] = useState(false);
+  const [tocModalOpen, setTocModalOpen] = useState(false);
 
   const navigationItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, id: 'Dashboard' },
@@ -594,6 +597,14 @@ function App() {
                   Filter
                 </Button>
                 <Button
+                  variant="outlined"
+                  startIcon={<TOCIcon />}
+                  sx={{ textTransform: 'none' }}
+                  onClick={() => setTocModalOpen(true)}
+                >
+                  Add Table of Contents
+                </Button>
+                <Button
                   variant="contained"
                   startIcon={<AddIcon />}
                   sx={{ textTransform: 'none' }}
@@ -781,6 +792,15 @@ function App() {
         <GenerateAudioLibraryModal
           open={generateAudioLibraryModalOpen}
           onClose={() => setGenerateAudioLibraryModalOpen(false)}
+          onShowNotification={(message, severity) =>
+            setUploadStatus({ open: true, message, severity: severity as 'success' | 'error' | 'info' })
+          }
+        />
+
+        {/* Add Table of Contents Modal */}
+        <AddTableOfContentsModal
+          open={tocModalOpen}
+          onClose={() => setTocModalOpen(false)}
           onShowNotification={(message, severity) =>
             setUploadStatus({ open: true, message, severity: severity as 'success' | 'error' | 'info' })
           }

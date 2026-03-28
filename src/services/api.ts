@@ -641,6 +641,38 @@ export const audioLibraryAPI = {
   },
 };
 
+// Table of Contents API
+export interface TOCEntry {
+  id?: number;
+  chapter_title: string;
+  page_number: number;
+  order_index: number;
+}
+
+export const tocAPI = {
+  async getTableOfContents(bookId: number | string): Promise<TOCEntry[]> {
+    try {
+      const data = await httpClient.get<any>(API_ENDPOINTS.tts.tableOfContents(bookId));
+      return data.success ? data.data : [];
+    } catch (error) {
+      console.error('Error fetching table of contents:', error);
+      throw error;
+    }
+  },
+
+  async saveTableOfContents(bookId: number | string, entries: TOCEntry[]): Promise<any> {
+    try {
+      const data = await httpClient.post<any>(API_ENDPOINTS.tts.tableOfContents(bookId), {
+        entries,
+      });
+      return data;
+    } catch (error) {
+      console.error('Error saving table of contents:', error);
+      throw error;
+    }
+  },
+};
+
 const api = {
   booksAPI,
   analyticsAPI,

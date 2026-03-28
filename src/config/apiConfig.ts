@@ -92,6 +92,7 @@ export const API_ENDPOINTS = {
     regeneratePage: `${TTS_SERVICE_URL}/tts/regenerate-page`,
     generateDictionary: (bookId: string | number) => `${TTS_SERVICE_URL}/books/${bookId}/generate-dictionary`,
     generateAudioLibrary: (bookId: string | number) => `${TTS_SERVICE_URL}/books/${bookId}/generate-audio-library`,
+    tableOfContents: (bookId: string | number) => `${TTS_SERVICE_URL}/books/${bookId}/table-of-contents`,
   },
 };
 
