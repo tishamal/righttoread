@@ -270,6 +270,7 @@ const AnalyticsDashboard: React.FC = () => {
         id: log.id,
         schoolId: log.schoolId,
         schoolName: log.schoolName,
+        censusNo: log.censusNo,
         syncTimestamp: log.syncTimestamp,
         recordsProcessed: log.recordsProcessed,
         success: log.success,
@@ -297,7 +298,7 @@ const AnalyticsDashboard: React.FC = () => {
       'Total Reading Time (hours)': convertMsToHours(school.totalReadingTimeMs),
       'Books Accessed': school.totalBooksAccessed,
       'Total Records': school.totalRecords,
-      'Last Sync': formatTimestamp(school.lastSyncTime),
+      'Last Sync': formatSyncTimestamp(school.lastSyncTime),
       'Status': school.isActive ? 'Active' : 'Inactive',
     }));
     exportToCSV(exportData, 'schools_analytics');
@@ -307,7 +308,7 @@ const AnalyticsDashboard: React.FC = () => {
     const exportData = filteredBooks.map(book => ({
       'Book Title': book.bookTitle,
       'Grade': book.grade,
-      'Total Time (hours)': convertMsToHours(book.totalActiveTimeMs),
+      'Total Time': formatReadingTime(book.totalActiveTimeMs),
       'Schools Using': book.uniqueSchools,
       'Times Opened': book.totalAccessCount,
       'Avg Session (min)': Math.round(book.avgSessionTimeMs / 60000),
@@ -317,7 +318,8 @@ const AnalyticsDashboard: React.FC = () => {
 
   const handleExportLogs = () => {
     const exportData = filteredLogs.map(log => ({
-      'Timestamp': formatTimestamp(log.syncTimestamp, true),
+      'Timestamp': formatSyncTimestamp(log.syncTimestamp),
+      'Census No': log.censusNo || '',
       'School': log.schoolName,
       'Records Processed': log.recordsProcessed,
       'Status': log.success ? 'Success' : 'Failed',
@@ -630,9 +632,7 @@ const AnalyticsDashboard: React.FC = () => {
                             <TableCell align="right">{school.totalBooksAccessed}</TableCell>
                             <TableCell align="right">{school.totalRecords}</TableCell>
                             <TableCell>
-                              <MuiTooltip title={formatTimestamp(school.lastSyncTime, true)}>
-                                <span>{getRelativeTime(school.lastSyncTime)}</span>
-                              </MuiTooltip>
+                              {formatSyncTimestamp(school.lastSyncTime)}
                             </TableCell>
                             <TableCell>
                               <Chip
@@ -774,6 +774,7 @@ const AnalyticsDashboard: React.FC = () => {
                     <TableHead>
                       <TableRow>
                         <TableCell>Timestamp</TableCell>
+                        <TableCell>Census No</TableCell>
                         <TableCell>School</TableCell>
                         <TableCell align="right">Records Processed</TableCell>
                         <TableCell>Status</TableCell>
@@ -788,6 +789,7 @@ const AnalyticsDashboard: React.FC = () => {
                             <TableCell>
                               {formatSyncTimestamp(log.syncTimestamp)}
                             </TableCell>
+                            <TableCell>{log.censusNo || '-'}</TableCell>
                             <TableCell>{log.schoolName}</TableCell>
                             <TableCell align="right">{log.recordsProcessed}</TableCell>
                             <TableCell>
