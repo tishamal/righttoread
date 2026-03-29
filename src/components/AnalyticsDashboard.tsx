@@ -83,6 +83,17 @@ import {
 
 const COLORS = ['#6365f1ef', '#0ea4e9ea', '#8a5cf6f6', '#14b8a5f4', '#3b83f6f4', '#06b5d4f1', '#10b981f3', '#d846eff1'];
 
+const formatSyncTimestamp = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const period = hours >= 12 ? 'P.M' : 'A.M';
+  return `${month}/${day}/${year} : ${String(hours).padStart(2, '0')}:${minutes} ${period}`;
+};
+
 interface StatCardProps {
   title: string;
   value: string | number;
@@ -775,9 +786,7 @@ const AnalyticsDashboard: React.FC = () => {
                         .map((log) => (
                           <TableRow key={log.id} hover>
                             <TableCell>
-                              <MuiTooltip title={formatTimestamp(log.syncTimestamp, true)}>
-                                <span>{getRelativeTime(log.syncTimestamp)}</span>
-                              </MuiTooltip>
+                              {formatSyncTimestamp(log.syncTimestamp)}
                             </TableCell>
                             <TableCell>{log.schoolName}</TableCell>
                             <TableCell align="right">{log.recordsProcessed}</TableCell>
