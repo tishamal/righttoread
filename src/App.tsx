@@ -446,16 +446,7 @@ function App() {
               <Typography variant="h4" fontWeight="bold" gutterBottom>
                 Audio Library
               </Typography>
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<BookIcon />}
-                  sx={{ textTransform: 'none' }}
-                  onClick={() => setGenerateDictionaryModalOpen(true)}
-                >
-                  Generate Dictionary
-                </Button>
-                <Button
+              <Button
                   variant="contained"
                   startIcon={<AudioIcon />}
                   sx={{ textTransform: 'none' }}
@@ -463,7 +454,6 @@ function App() {
                 >
                   Generate Audio Library
                 </Button>
-              </Box>
             </Box>
 
             <Paper sx={{ p: 4, borderRadius: 3 }}>
@@ -487,6 +477,7 @@ function App() {
             onShowNotification={(message, severity) =>
               setUploadStatus({ open: true, message, severity: severity as 'success' | 'error' | 'info' })
             }
+            onGenerateDictionary={() => setGenerateDictionaryModalOpen(true)}
           />
         );
       case 'SchoolRegistration':
