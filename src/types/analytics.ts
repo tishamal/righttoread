@@ -60,6 +60,7 @@ export interface SyncLogEntry {
   id: number;
   schoolId: number;
   schoolName: string;
+  censusNo?: string;
   syncTimestamp: number;
   recordsProcessed: number;
   success: boolean;

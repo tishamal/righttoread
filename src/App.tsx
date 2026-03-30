@@ -8,6 +8,11 @@ import PictureDictionary from './components/PictureDictionary';
 import SchoolRegistration from './components/SchoolRegistration';
 import UserManagement from './components/UserManagement';
 import Profile from './components/Profile';
+import GenerateDictionaryModal from './components/GenerateDictionaryModal';
+import GenerateAudioLibraryModal from './components/GenerateAudioLibraryModal';
+import AddTableOfContentsModal from './components/AddTableOfContentsModal';
+import AudioLibraryList from './components/AudioLibraryList';
+import BookDictionary from './components/BookDictionary';
 import { booksAPI, ttsAPI, analyticsAPI } from './services/api';
 import { authAPI } from './services/authAPI';
 import { OverviewStats, SchoolMetrics } from './types/analytics';
@@ -58,6 +63,7 @@ import {
   Collections as DictionaryIcon,
   School as SchoolIcon,
   ManageAccounts as ManageAccountsIcon,
+  FormatListNumbered as TOCIcon,
 } from '@mui/icons-material';
 import { styled, alpha } from '@mui/material/styles';
 
@@ -223,12 +229,17 @@ function App() {
 
   const [overviewStats, setOverviewStats] = useState<OverviewStats | null>(null);
   const [activeSchools, setActiveSchools] = useState<SchoolMetrics[]>([]);
+  const [generateDictionaryModalOpen, setGenerateDictionaryModalOpen] = useState(false);
+  const [generateAudioLibraryModalOpen, setGenerateAudioLibraryModalOpen] = useState(false);
+  const [tocModalOpen, setTocModalOpen] = useState(false);
 
   const navigationItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, id: 'Dashboard' },
     { text: 'Analytics', icon: <AnalyticsIcon />, id: 'Analytics' },
     { text: 'Digital Review', icon: <AudioIcon />, id: 'DigitalReview' },
+    { text: 'Audio Library', icon: <AudioIcon />, id: 'AudioLibrary' },
     { text: 'Picture Dictionary', icon: <DictionaryIcon />, id: 'PictureDictionary' },
+    { text: 'Dictionary', icon: <BookIcon />, id: 'Dictionary' },
     { text: 'School Registration', icon: <SchoolIcon />, id: 'SchoolRegistration' },
     { text: 'User Management', icon: <ManageAccountsIcon />, id: 'UserManagement' },
     { text: 'Account', icon: <AccountIcon />, id: 'Account' },
@@ -428,10 +439,54 @@ function App() {
         return <AnalyticsDashboard />;
       case 'DigitalReview':
         return <DigitalVersionReview />;
+      case 'AudioLibrary':
+        return (
+          <Box className="fade-in">
+            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="h4" fontWeight="bold" gutterBottom>
+                Audio Library
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<BookIcon />}
+                  sx={{ textTransform: 'none' }}
+                  onClick={() => setGenerateDictionaryModalOpen(true)}
+                >
+                  Generate Dictionary
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<AudioIcon />}
+                  sx={{ textTransform: 'none' }}
+                  onClick={() => setGenerateAudioLibraryModalOpen(true)}
+                >
+                  Generate Audio Library
+                </Button>
+              </Box>
+            </Box>
+
+            <Paper sx={{ p: 4, borderRadius: 3 }}>
+              <AudioLibraryList
+                onShowNotification={(message, severity) =>
+                  setUploadStatus({ open: true, message, severity: severity as 'success' | 'error' | 'info' })
+                }
+              />
+            </Paper>
+          </Box>
+        );
       case 'PictureDictionary':
         return (
           <PictureDictionary
             onShowNotification={(message, severity) => setUploadStatus({ open: true, message, severity })}
+          />
+        );
+      case 'Dictionary':
+        return (
+          <BookDictionary
+            onShowNotification={(message, severity) =>
+              setUploadStatus({ open: true, message, severity: severity as 'success' | 'error' | 'info' })
+            }
           />
         );
       case 'SchoolRegistration':
@@ -540,6 +595,14 @@ function App() {
                   sx={{ textTransform: 'none' }}
                 >
                   Filter
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<TOCIcon />}
+                  sx={{ textTransform: 'none' }}
+                  onClick={() => setTocModalOpen(true)}
+                >
+                  Add Table of Contents
                 </Button>
                 <Button
                   variant="contained"
@@ -714,6 +777,33 @@ function App() {
           open={addBookModalOpen}
           onClose={() => setAddBookModalOpen(false)}
           onSave={handleAddBook}
+        />
+
+        {/* Generate Dictionary Modal */}
+        <GenerateDictionaryModal
+          open={generateDictionaryModalOpen}
+          onClose={() => setGenerateDictionaryModalOpen(false)}
+          onShowNotification={(message, severity) =>
+            setUploadStatus({ open: true, message, severity: severity as 'success' | 'error' | 'info' })
+          }
+        />
+
+        {/* Generate Audio Library Modal */}
+        <GenerateAudioLibraryModal
+          open={generateAudioLibraryModalOpen}
+          onClose={() => setGenerateAudioLibraryModalOpen(false)}
+          onShowNotification={(message, severity) =>
+            setUploadStatus({ open: true, message, severity: severity as 'success' | 'error' | 'info' })
+          }
+        />
+
+        {/* Add Table of Contents Modal */}
+        <AddTableOfContentsModal
+          open={tocModalOpen}
+          onClose={() => setTocModalOpen(false)}
+          onShowNotification={(message, severity) =>
+            setUploadStatus({ open: true, message, severity: severity as 'success' | 'error' | 'info' })
+          }
         />
 
         {/* Upload Status Snackbar */}

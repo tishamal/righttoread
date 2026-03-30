@@ -40,7 +40,19 @@ export const API_ENDPOINTS = {
   // Picture Dictionary
   dictionary: {
     list: `${TTS_SERVICE_URL}/dictionary`,
+    download: (word: string) => `${TTS_SERVICE_URL}/dictionary/download?word=${encodeURIComponent(word)}`,
     addWord: `${TTS_SERVICE_URL}/dictionary/add`,
+  },
+
+  // Book Word Dictionary
+  bookDictionary: (bookName: string) => `${TTS_SERVICE_URL}/v1/books/${encodeURIComponent(bookName)}/dictionary`,
+  updateDictionaryWord: (bookName: string, word: string) =>
+    `${TTS_SERVICE_URL}/v1/books/${encodeURIComponent(bookName)}/dictionary/${encodeURIComponent(word)}`,
+
+  // Audio Library
+  audioLibrary: {
+    list: `${TTS_SERVICE_URL}/audio-library/`,
+    download: (word: string) => `${TTS_SERVICE_URL}/audio-library/download?word=${encodeURIComponent(word)}`,
   },
 
   // User Management endpoints (Cognito via Python FastAPI service)
@@ -78,6 +90,9 @@ export const API_ENDPOINTS = {
     approvePage: (bookId: string | number, pageId: number) => 
       `${TTS_SERVICE_URL}/digital-review/books/${bookId}/pages/${pageId}/approve`,
     regeneratePage: `${TTS_SERVICE_URL}/tts/regenerate-page`,
+    generateDictionary: (bookId: string | number) => `${TTS_SERVICE_URL}/books/${bookId}/generate-dictionary`,
+    generateAudioLibrary: (bookId: string | number) => `${TTS_SERVICE_URL}/books/${bookId}/generate-audio-library`,
+    tableOfContents: (bookId: string | number) => `${TTS_SERVICE_URL}/books/${bookId}/table-of-contents`,
   },
 };
 
