@@ -40,6 +40,7 @@ import { bookDictionaryAPI, ttsAPI, DictionaryWord, DictionaryWordUpdate, Dictio
 
 interface BookDictionaryProps {
   onShowNotification: (message: string, severity: 'success' | 'error' | 'info') => void;
+  onGenerateDictionary?: () => void;
 }
 
 interface EditState {
@@ -48,7 +49,7 @@ interface EditState {
   simple_definition: string;
 }
 
-const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification }) => {
+const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification, onGenerateDictionary }) => {
   // Book selection
   const [books, setBooks] = useState<{ slug: string; label: string }[]>([]);
   const [selectedSlug, setSelectedSlug] = useState<string>('');
@@ -208,6 +209,16 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification }) =
               sx={{ textTransform: 'none' }}
             >
               Add Word
+            </Button>
+          )}
+          {onGenerateDictionary && (
+            <Button
+              variant="outlined"
+              startIcon={<MenuBookIcon />}
+              sx={{ textTransform: 'none' }}
+              onClick={onGenerateDictionary}
+            >
+              Generate Dictionary
             </Button>
           )}
         </Stack>
