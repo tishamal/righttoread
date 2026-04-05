@@ -6,6 +6,7 @@ import AnalyticsDashboard from './components/AnalyticsDashboard';
 import DigitalVersionReview from './components/DigitalVersionReview';
 import PictureDictionary from './components/PictureDictionary';
 import SchoolRegistration from './components/SchoolRegistration';
+import SchoolDownloads from './components/SchoolDownloads';
 import UserManagement from './components/UserManagement';
 import Profile from './components/Profile';
 import GenerateDictionaryModal from './components/GenerateDictionaryModal';
@@ -64,6 +65,7 @@ import {
   School as SchoolIcon,
   ManageAccounts as ManageAccountsIcon,
   FormatListNumbered as TOCIcon,
+  CloudDownload as DownloadIcon,
 } from '@mui/icons-material';
 import { styled, alpha } from '@mui/material/styles';
 
@@ -241,6 +243,7 @@ function App() {
     { text: 'Picture Dictionary', icon: <DictionaryIcon />, id: 'PictureDictionary' },
     { text: 'Dictionary', icon: <BookIcon />, id: 'Dictionary' },
     { text: 'School Registration', icon: <SchoolIcon />, id: 'SchoolRegistration' },
+    { text: 'School Downloads', icon: <DownloadIcon />, id: 'SchoolDownloads' },
     { text: 'User Management', icon: <ManageAccountsIcon />, id: 'UserManagement' },
     { text: 'Account', icon: <AccountIcon />, id: 'Account' },
   ];
@@ -482,6 +485,8 @@ function App() {
         );
       case 'SchoolRegistration':
         return <SchoolRegistration />;
+      case 'SchoolDownloads':
+        return <SchoolDownloads />;
       case 'UserManagement':
         return <UserManagement />;
       case 'Account':
