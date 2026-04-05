@@ -77,6 +77,11 @@ export const API_ENDPOINTS = {
     delete: (id: number) => `${TTS_SERVICE_URL}/registered-schools/${id}`,
   },
 
+  // Device Downloads (Python FastAPI service)
+  devices: {
+    downloads: `${TTS_SERVICE_URL}/devices/downloads`,
+  },
+
   // TTS Service endpoints (Python FastAPI service)
   tts: {
     uploadBook: `${TTS_SERVICE_URL}/tts_service`,
