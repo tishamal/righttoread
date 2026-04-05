@@ -224,7 +224,12 @@ const AnalyticsDashboard: React.FC = () => {
         totalRecords: overviewResponse.totalRecords,
         activeSchoolsLast7Days: overviewResponse.activeSchoolsLast7Days,
         activeSchoolsLast30Days: overviewResponse.activeSchoolsLast30Days,
-        percentageChange: overviewResponse.percentageChange,
+        weeklyReadingTimeMs: overviewResponse.weeklyReadingTimeMs ?? 0,
+        weeklyReadingTimeHours: overviewResponse.weeklyReadingTimeHours ?? 0,
+        percentageChange: {
+          ...overviewResponse.percentageChange,
+          weeklyReadingTime: overviewResponse.percentageChange?.weeklyReadingTime ?? 0,
+        },
       });
 
       setSchools(schoolsResponse.map((school: any) => ({
@@ -237,6 +242,7 @@ const AnalyticsDashboard: React.FC = () => {
         totalRecords: school.totalRecords,
         lastSyncTime: school.lastSyncTime,
         isActive: school.isActive,
+        weeklyReadingTimeMs: school.weeklyReadingTimeMs ?? 0,
       })));
 
       setPopularBooks(booksResponse.map((book: any) => ({
@@ -296,6 +302,7 @@ const AnalyticsDashboard: React.FC = () => {
       'School Name': school.schoolName,
       'Serial Number': school.serialNumber,
       'Total Reading Time (hours)': convertMsToHours(school.totalReadingTimeMs),
+      'Weekly Reading Time (min)': convertMsToMinutes(school.weeklyReadingTimeMs),
       'Books Accessed': school.totalBooksAccessed,
       'Total Records': school.totalRecords,
       'Last Sync': formatSyncTimestamp(school.lastSyncTime),
@@ -413,9 +420,9 @@ const AnalyticsDashboard: React.FC = () => {
         </Grid>
         <Grid item xs={12} sm={6} md={4} lg>
           <StatCard
-            title="Total Reading Time"
-            value={formatReadingTime(overviewStats?.totalReadingTimeMs || 0)}
-            change={overviewStats?.percentageChange.readingTime}
+            title="Weekly Reading Time"
+            value={formatReadingTime(overviewStats?.weeklyReadingTimeMs || 0)}
+            change={overviewStats?.percentageChange.weeklyReadingTime}
             icon={<TimeIcon />}
             loading={loading}
           />
@@ -613,6 +620,7 @@ const AnalyticsDashboard: React.FC = () => {
                         <TableCell>School Name</TableCell>
                         <TableCell>Serial Number</TableCell>
                         <TableCell align="right">Reading Time (min)</TableCell>
+                        <TableCell align="right">Weekly Time (min)</TableCell>
                         <TableCell align="right">Books Accessed</TableCell>
                         <TableCell align="right">Total Records</TableCell>
                         <TableCell>Last Sync</TableCell>
@@ -628,6 +636,9 @@ const AnalyticsDashboard: React.FC = () => {
                             <TableCell>{school.serialNumber}</TableCell>
                             <TableCell align="right">
                               {convertMsToMinutes(school.totalReadingTimeMs)}
+                            </TableCell>
+                            <TableCell align="right">
+                              {convertMsToMinutes(school.weeklyReadingTimeMs)}
                             </TableCell>
                             <TableCell align="right">{school.totalBooksAccessed}</TableCell>
                             <TableCell align="right">{school.totalRecords}</TableCell>
