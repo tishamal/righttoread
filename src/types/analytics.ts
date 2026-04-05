@@ -8,10 +8,13 @@ export interface OverviewStats {
   totalRecords: number;
   activeSchoolsLast7Days: number;
   activeSchoolsLast30Days: number;
+  weeklyReadingTimeMs: number;
+  weeklyReadingTimeHours: number;
   percentageChange: {
     schools: number;
     readingTime: number;
     records: number;
+    weeklyReadingTime: number;
   };
 }
 
@@ -25,6 +28,7 @@ export interface SchoolMetrics {
   totalRecords: number;
   lastSyncTime: number;
   isActive: boolean;
+  weeklyReadingTimeMs: number;
 }
 
 export interface BookAnalytics {
