@@ -17,11 +17,19 @@ import {
   Alert,
   Snackbar,
   Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Button,
+  Tooltip,
 } from '@mui/material';
 import {
   Search as SearchIcon,
   Clear as ClearIcon,
   PhoneAndroid as DeviceIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { IconButton } from '@mui/material';
 import { devicesAPI, DeviceDownloadEntry } from '../services/devicesAPI';
@@ -42,6 +50,13 @@ const SchoolDownloads: React.FC = () => {
     message: string;
     severity: 'success' | 'error';
   }>({ open: false, message: '', severity: 'error' });
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    row: DeviceDownloadEntry | null;
+  }>({ open: false, row: null });
+  const [deleting, setDeleting] = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0);
 
   // Debounce search
   useEffect(() => {
@@ -71,7 +86,21 @@ const SchoolDownloads: React.FC = () => {
 
   useEffect(() => {
     loadData(page, rowsPerPage, committedSearch);
-  }, [loadData, page, rowsPerPage, committedSearch]);
+  }, [loadData, page, rowsPerPage, committedSearch, refreshTick]);
+
+  const handleDeleteConfirm = async () => {
+    if (!confirmDialog.row) return;
+    setDeleting(true);
+    try {
+      await devicesAPI.deleteDevice(confirmDialog.row.id);
+      setConfirmDialog({ open: false, row: null });
+      window.location.reload();
+    } catch {
+      setSnackbar({ open: true, message: 'Failed to delete record. Please try again.', severity: 'error' });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const platformLabel = (platform: string | null) => {
     if (!platform) return <Chip label="Unknown" size="small" />;
@@ -145,19 +174,20 @@ const SchoolDownloads: React.FC = () => {
                 <TableCell sx={{ fontWeight: 700 }}>Device ID (MAC)</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Downloaded Date</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Downloaded Time</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="center">Actions</TableCell>
               </TableRow>
             </TableHead>
 
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={9} align="center" sx={{ py: 6 }}>
                     <CircularProgress size={32} />
                   </TableCell>
                 </TableRow>
               ) : rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={9} align="center" sx={{ py: 6 }}>
                     <Typography color="text.secondary">No records found.</Typography>
                   </TableCell>
                 </TableRow>
@@ -188,6 +218,20 @@ const SchoolDownloads: React.FC = () => {
                     </TableCell>
                     <TableCell>{row.downloaded_date}</TableCell>
                     <TableCell>{row.downloaded_time}</TableCell>
+                    <TableCell align="center">
+                      <Tooltip title={row.id ? "Delete record" : "Refresh page to enable delete"}>
+                        <span>
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => setConfirmDialog({ open: true, row })}
+                            disabled={!row.id}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -218,6 +262,28 @@ const SchoolDownloads: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={confirmDialog.open} onClose={() => !deleting && setConfirmDialog({ open: false, row: null })}>
+        <DialogTitle>Delete Device Record?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete the record for{' '}
+            <strong>{confirmDialog.row?.school_name}</strong> (Census:{' '}
+            <strong>{confirmDialog.row?.census_no}</strong>, Device ID:{' '}
+            <strong>{confirmDialog.row?.mac_address || '—'}</strong>)?<br /><br />
+            This cannot be undone. The device will be able to re-register after deletion.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDialog({ open: false, row: null })} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleting}>
+            {deleting ? 'Deleting…' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

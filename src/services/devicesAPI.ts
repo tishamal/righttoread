@@ -2,6 +2,7 @@ import { API_ENDPOINTS } from '../config/apiConfig';
 import { httpClient } from '../utils/httpClient';
 
 export interface DeviceDownloadEntry {
+  id: number;
   school_name: string;
   census_no: string;
   platform: string | null;
@@ -38,5 +39,12 @@ export const devicesAPI = {
       `${API_ENDPOINTS.devices.downloads}?${qs}`
     );
     return data;
+  },
+
+  async deleteDevice(deviceId: number): Promise<void> {
+    if (!deviceId || isNaN(deviceId)) {
+      throw new Error('Invalid device ID — please refresh the page and try again.');
+    }
+    await httpClient.delete(`${API_ENDPOINTS.devices.downloads.replace('/downloads', '')}/${deviceId}`);
   },
 };
