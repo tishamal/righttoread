@@ -686,7 +686,7 @@ const AnalyticsDashboard: React.FC = () => {
                     </Button>
                   </Stack>
                 </Stack>
-                <TableContainer>
+                <TableContainer sx={{ '& .MuiTableSortLabel-icon': { opacity: 0.35, transition: 'opacity 0.2s' }, '& .MuiTableSortLabel-root.Mui-active .MuiTableSortLabel-icon': { opacity: 1 }, '& .MuiTableSortLabel-root': { flexDirection: 'row' } }}>
                   <Table>
                     <TableHead>
                       <TableRow sx={{ bgcolor: 'grey.50' }}>
@@ -789,7 +789,7 @@ const AnalyticsDashboard: React.FC = () => {
                     </Button>
                   </Stack>
                 </Stack>
-                <TableContainer>
+                <TableContainer sx={{ '& .MuiTableSortLabel-icon': { opacity: 0.35, transition: 'opacity 0.2s' }, '& .MuiTableSortLabel-root.Mui-active .MuiTableSortLabel-icon': { opacity: 1 }, '& .MuiTableSortLabel-root': { flexDirection: 'row' } }}>
                   <Table>
                     <TableHead>
                       <TableRow sx={{ bgcolor: 'grey.50' }}>
@@ -881,7 +881,7 @@ const AnalyticsDashboard: React.FC = () => {
                     </Button>
                   </Stack>
                 </Stack>
-                <TableContainer>
+                <TableContainer sx={{ '& .MuiTableSortLabel-icon': { opacity: 0.35, transition: 'opacity 0.2s' }, '& .MuiTableSortLabel-root.Mui-active .MuiTableSortLabel-icon': { opacity: 1 }, '& .MuiTableSortLabel-root': { flexDirection: 'row' } }}>
                   <Table>
                     <TableHead>
                       <TableRow sx={{ bgcolor: 'grey.50' }}>
