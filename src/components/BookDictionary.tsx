@@ -312,7 +312,7 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification, onG
                 <Table size="small">
                   <TableHead>
                     <TableRow sx={{ bgcolor: 'primary.main' }}>
-                      {['Word', 'Sinhala Meaning', 'Tamil Meaning', 'Simple Definition', 'Actions'].map(
+                      {['Word', 'Sinhala Meaning', 'Tamil Meaning', 'Simple Definition', 'Example Sentence', 'Actions'].map(
                         (col) => (
                           <TableCell
                             key={col}
@@ -394,6 +394,11 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification, onG
                             ) : (
                               w.simple_definition ?? '—'
                             )}
+                          </TableCell>
+
+                          {/* Example Sentence */}
+                          <TableCell sx={{ maxWidth: 320, fontStyle: 'italic', color: 'text.secondary' }}>
+                            {w.contexts && w.contexts.length > 0 ? w.contexts[0] : '—'}
                           </TableCell>
 
                           {/* Actions */}

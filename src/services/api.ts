@@ -368,6 +368,18 @@ export const ttsAPI = {
     }
   },
 
+  async renameBook(bookId: string | number, displayName: string): Promise<any> {
+    try {
+      const data = await httpClient.put<any>(API_ENDPOINTS.tts.renameBook(bookId), {
+        display_name: displayName,
+      });
+      return data;
+    } catch (error) {
+      console.error('Error renaming book:', error);
+      throw error;
+    }
+  },
+
   async updatePageBlocks(
     bookId: string | number,
     pageNumber: number,
