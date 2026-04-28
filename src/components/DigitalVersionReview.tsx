@@ -91,6 +91,7 @@ interface Block {
 interface Book {
   id: number;
   book_name: string;
+  display_name: string | null;
   grade: number;
   total_pages: number | null;
   processing_status: string;
@@ -713,6 +714,16 @@ const DigitalVersionReview: React.FC = () => {
     setCurrentPageIndex(0); // Reset to first page when selecting a new book manually
   };
 
+  const handleRenameBook = async (bookId: number, newName: string) => {
+    await ttsAPI.renameBook(bookId, newName);
+    setBooks(prev =>
+      prev.map(b => b.id === bookId ? { ...b, display_name: newName } : b)
+    );
+    if (selectedBook?.id === bookId) {
+      setSelectedBook(prev => prev ? { ...prev, display_name: newName } : prev);
+    }
+  };
+
   const handleNextPage = () => {
     if (bookDetails && currentPageIndex < bookDetails.pages.length - 1) {
       setCurrentPageIndex(currentPageIndex + 1);
@@ -1316,6 +1327,7 @@ const DigitalVersionReview: React.FC = () => {
           books={books}
           selectedBookId={selectedBook?.id || null}
           onSelectBook={handleSelectBook}
+          onRenameBook={handleRenameBook}
           loading={loading}
           statusFilter={statusFilter}
           gradeFilter={gradeFilter}

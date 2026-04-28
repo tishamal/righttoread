@@ -90,6 +90,7 @@ export const API_ENDPOINTS = {
     bookDetails: (bookId: string | number) => `${TTS_SERVICE_URL}/books/${bookId}/details`,
     presignedUrls: (bookId: string | number) => `${TTS_SERVICE_URL}/books/${bookId}/presigned_urls`,
     reviewStatus: (bookId: string | number) => `${TTS_SERVICE_URL}/books/${bookId}/review_status`,
+    renameBook: (bookId: string | number) => `${TTS_SERVICE_URL}/books/${bookId}/rename`,
     updateBlocks: (bookId: string | number, pageNumber: number) => 
       `${TTS_SERVICE_URL}/books/${bookId}/pages/${pageNumber}/update-blocks`,
     approvePage: (bookId: string | number, pageId: number) => 
