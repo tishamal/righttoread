@@ -18,10 +18,20 @@ export interface OverviewStats {
   };
 }
 
+export interface GradeUsage {
+  grade: number;
+  readingTimeMs: number;
+}
+
 export interface SchoolMetrics {
   id: number;
   schoolName: string;
+  censusNo?: string;
   serialNumber: string;
+  province?: string;
+  district?: string;
+  zone?: string;
+  installationDate?: number;
   totalReadingTimeMs: number;
   totalReadingTimeHours: number;
   totalBooksAccessed: number;
@@ -29,6 +39,9 @@ export interface SchoolMetrics {
   lastSyncTime: number;
   isActive: boolean;
   weeklyReadingTimeMs: number;
+  weeklyBooksAccessed?: number;
+  gradeWiseWeeklyUsage?: GradeUsage[];
+  weeklyUsagePercentage?: number;
 }
 
 export interface BookAnalytics {

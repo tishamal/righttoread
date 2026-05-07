@@ -14,6 +14,7 @@ import GenerateAudioLibraryModal from './components/GenerateAudioLibraryModal';
 import AddTableOfContentsModal from './components/AddTableOfContentsModal';
 import AudioLibraryList from './components/AudioLibraryList';
 import BookDictionary from './components/BookDictionary';
+import RenameBookModal from './components/RenameBookModal';
 import { booksAPI, ttsAPI, analyticsAPI } from './services/api';
 import { authAPI } from './services/authAPI';
 import { OverviewStats, SchoolMetrics } from './types/analytics';
@@ -53,7 +54,6 @@ import {
 import {
   Dashboard as DashboardIcon,
   AccountCircle as AccountIcon,
-  Settings as SettingsIcon,
   Search as SearchIcon,
   Notifications as NotificationsIcon,
   FilterList as FilterIcon,
@@ -66,6 +66,7 @@ import {
   ManageAccounts as ManageAccountsIcon,
   FormatListNumbered as TOCIcon,
   CloudDownload as DownloadIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import { styled, alpha } from '@mui/material/styles';
 
@@ -234,6 +235,7 @@ function App() {
   const [generateDictionaryModalOpen, setGenerateDictionaryModalOpen] = useState(false);
   const [generateAudioLibraryModalOpen, setGenerateAudioLibraryModalOpen] = useState(false);
   const [tocModalOpen, setTocModalOpen] = useState(false);
+  const [renameDashboardTarget, setRenameDashboardTarget] = useState<Book | null>(null);
 
   const navigationItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, id: 'Dashboard' },
@@ -303,7 +305,7 @@ function App() {
         
         return {
           id: book.id.toString(),
-          title: book.book_name ? formatBookName(book.book_name) : 'Untitled Book',
+          title: book.display_name || (book.book_name ? formatBookName(book.book_name) : 'Untitled Book'),
           author: 'Ministry of Education Sri Lanka',
           grade: `Grade ${book.grade}`,
           subject: 'English', // Default to English, can be enhanced later
@@ -425,11 +427,16 @@ function App() {
     ? books 
     : books.filter(book => book.grade === selectedGrade);
 
+  const handleDashboardRename = async (newName: string) => {
+    if (!renameDashboardTarget) return;
+    await ttsAPI.renameBook(renameDashboardTarget.id, newName);
+    setBooks(prev =>
+      prev.map(b => b.id === renameDashboardTarget.id ? { ...b, title: newName } : b)
+    );
+  };
+
   // Calculate statistics
   const totalBooks = books.length;
-  const availableBooks = books.filter(book => book.status === 'Available').length;
-  const limitedBooks = books.filter(book => book.status === 'Limited').length;
-  const outOfStockBooks = books.filter(book => book.status === 'Out of Stock').length;
 
   // Show login page if not authenticated
   if (!isAuthenticated) {
@@ -624,9 +631,20 @@ function App() {
                       sx={{ objectFit: 'cover' }}
                     />
                     <CardContent sx={{ flexGrow: 1 }}>
-                      <Typography variant="h6" component="h2" gutterBottom noWrap>
-                        {book.title}
-                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                        <Typography variant="h6" component="h2" gutterBottom noWrap sx={{ flex: 1, mr: 1 }}>
+                          {book.title}
+                        </Typography>
+                        <Tooltip title="Rename">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => setRenameDashboardTarget(book)}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
                       <Typography variant="body2" color="textSecondary" gutterBottom>
                         {book.author}
                       </Typography>
@@ -648,6 +666,16 @@ function App() {
                 </Grid>
               ))}
             </Grid>
+
+            <RenameBookModal
+              open={renameDashboardTarget !== null}
+              currentName={renameDashboardTarget?.title ?? ''}
+              onClose={() => setRenameDashboardTarget(null)}
+              onConfirm={async (newName) => {
+                await handleDashboardRename(newName);
+                setRenameDashboardTarget(null);
+              }}
+            />
           </Box>
         );
     }

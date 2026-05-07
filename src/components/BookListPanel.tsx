@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Paper,
   Typography,
@@ -12,12 +12,16 @@ import {
   InputLabel,
   Stack,
   CircularProgress,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
-import { Book as BookIcon } from '@mui/icons-material';
+import { Book as BookIcon, Edit as EditIcon } from '@mui/icons-material';
+import RenameBookModal from './RenameBookModal';
 
 interface Book {
   id: number;
   book_name: string;
+  display_name: string | null;
   grade: number;
   total_pages: number | null;
   processing_status: string;
@@ -31,6 +35,7 @@ interface BookListPanelProps {
   books: Book[];
   selectedBookId: number | null;
   onSelectBook: (book: Book) => void;
+  onRenameBook: (bookId: number, newName: string) => Promise<void>;
   loading?: boolean;
   statusFilter: string;
   gradeFilter: string;
@@ -42,12 +47,14 @@ const BookListPanel: React.FC<BookListPanelProps> = ({
   books,
   selectedBookId,
   onSelectBook,
+  onRenameBook,
   loading = false,
   statusFilter,
   gradeFilter,
   onStatusFilterChange,
   onGradeFilterChange,
 }) => {
+  const [renameTarget, setRenameTarget] = useState<Book | null>(null);
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
@@ -68,6 +75,7 @@ const BookListPanel: React.FC<BookListPanelProps> = ({
   };
 
   return (
+    <>
     <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Typography variant="h6" fontWeight="bold" gutterBottom>
         Books to Review
@@ -133,6 +141,7 @@ const BookListPanel: React.FC<BookListPanelProps> = ({
                 bgcolor: selectedBookId === book.id ? 'primary.light' : 'background.paper',
                 '&:hover': {
                   bgcolor: selectedBookId === book.id ? 'primary.light' : 'action.hover',
+                  '& .rename-btn': { visibility: 'visible' },
                 },
               }}
             >
@@ -148,7 +157,7 @@ const BookListPanel: React.FC<BookListPanelProps> = ({
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {book.book_name}
+                    {book.display_name ?? book.book_name}
                   </Typography>
                   <Typography variant="caption" color="textSecondary" display="block">
                     Grade {book.grade}
@@ -163,13 +172,39 @@ const BookListPanel: React.FC<BookListPanelProps> = ({
                     />
                   </Box>
                 </Box>
+                <Tooltip title="Rename">
+                  <IconButton
+                    size="small"
+                    className="rename-btn"
+                    color="primary"
+                    sx={{ visibility: 'hidden', flexShrink: 0 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setRenameTarget(book);
+                    }}
+                  >
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
               </Box>
             </ListItemButton>
           ))}
         </List>
       )}
     </Paper>
-  );
+
+    <RenameBookModal
+      open={renameTarget !== null}
+      currentName={renameTarget?.display_name ?? renameTarget?.book_name ?? ''}
+      onClose={() => setRenameTarget(null)}
+      onConfirm={async (newName) => {
+        if (renameTarget) {
+          await onRenameBook(renameTarget.id, newName);
+          setRenameTarget(null);
+        }
+      }}
+    />
+  </>);
 };
 
 export default BookListPanel;

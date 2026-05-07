@@ -165,10 +165,7 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification, onG
     }
     setAdding(true);
     try {
-      const created = await bookDictionaryAPI.addWord(selectedSlug, {
-        ...addForm,
-        word: addForm.word.trim(),
-      });
+      const created = await bookDictionaryAPI.generateAndAddWord(selectedSlug, addForm.word.trim());
       setWords((prev) => [...prev, created]);
       onShowNotification(`"${created.word}" added to the dictionary.`, 'success');
       setAddDialogOpen(false);
@@ -177,7 +174,7 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification, onG
       if (detail.includes('409') || detail.toLowerCase().includes('already exists')) {
         onShowNotification(`"${addForm.word}" already exists in the dictionary.`, 'error');
       } else {
-        onShowNotification(`Failed to add word.`, 'error');
+        onShowNotification(`Failed to generate and add word.`, 'error');
       }
     } finally {
       setAdding(false);
@@ -312,7 +309,7 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification, onG
                 <Table size="small">
                   <TableHead>
                     <TableRow sx={{ bgcolor: 'primary.main' }}>
-                      {['Word', 'Sinhala Meaning', 'Tamil Meaning', 'Simple Definition', 'Actions'].map(
+                      {['Word', 'Sinhala Meaning', 'Tamil Meaning', 'Simple Definition', 'Example Sentence', 'Actions'].map(
                         (col) => (
                           <TableCell
                             key={col}
@@ -396,6 +393,11 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification, onG
                             )}
                           </TableCell>
 
+                          {/* Example Sentence */}
+                          <TableCell sx={{ maxWidth: 320, fontStyle: 'italic', color: 'text.secondary' }}>
+                            {w.contexts && w.contexts.length > 0 ? w.contexts[0] : '—'}
+                          </TableCell>
+
                           {/* Actions */}
                           <TableCell sx={{ whiteSpace: 'nowrap' }}>
                             {isEditing ? (
@@ -470,7 +472,10 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification, onG
       <Dialog open={addDialogOpen} onClose={() => !adding && setAddDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Add New Word</DialogTitle>
         <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
+          <Typography variant="body2" color="textSecondary" sx={{ mt: 1, mb: 2 }}>
+            Enter a word and the LLM will automatically generate its Sinhala translation, Tamil translation, and simple definition.
+          </Typography>
+          <Stack spacing={2}>
             <TextField
               label="Word"
               value={addForm.word}
@@ -479,36 +484,6 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification, onG
               required
               fullWidth
               autoFocus
-            />
-            <TextField
-              label="Type (e.g. noun, verb)"
-              value={addForm.type ?? ''}
-              onChange={(e) => setAddForm((f) => ({ ...f, type: e.target.value }))}
-              size="small"
-              fullWidth
-            />
-            <TextField
-              label="Sinhala Meaning"
-              value={addForm.sinhala_translation ?? ''}
-              onChange={(e) => setAddForm((f) => ({ ...f, sinhala_translation: e.target.value }))}
-              size="small"
-              fullWidth
-            />
-            <TextField
-              label="Tamil Meaning"
-              value={addForm.tamil_translation ?? ''}
-              onChange={(e) => setAddForm((f) => ({ ...f, tamil_translation: e.target.value }))}
-              size="small"
-              fullWidth
-            />
-            <TextField
-              label="Simple Definition"
-              value={addForm.simple_definition ?? ''}
-              onChange={(e) => setAddForm((f) => ({ ...f, simple_definition: e.target.value }))}
-              size="small"
-              fullWidth
-              multiline
-              rows={2}
             />
           </Stack>
         </DialogContent>
@@ -523,7 +498,7 @@ const BookDictionary: React.FC<BookDictionaryProps> = ({ onShowNotification, onG
             startIcon={adding ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}
             sx={{ textTransform: 'none' }}
           >
-            {adding ? 'Adding…' : 'Add Word'}
+            {adding ? 'Generating…' : 'Generate & Add'}
           </Button>
         </DialogActions>
       </Dialog>

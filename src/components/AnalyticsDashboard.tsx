@@ -4,8 +4,6 @@ import {
   Paper,
   Grid,
   Typography,
-  Card,
-  CardContent,
   Stack,
   Button,
   MenuItem,
@@ -72,17 +70,12 @@ import {
 import {
   formatReadingTime,
   formatTimestamp,
-  getRelativeTime,
-  calculatePercentageChange,
   formatLargeNumber,
   getGradeColor,
   exportToCSV,
-  convertMsToHours,
   convertMsToMinutes,
 } from '../utils/analyticsHelpers';
 
-
-const COLORS = ['#6365f1ef', '#0ea4e9ea', '#8a5cf6f6', '#14b8a5f4', '#3b83f6f4', '#06b5d4f1', '#10b981f3', '#d846eff1'];
 
 const formatSyncTimestamp = (timestamp: number): string => {
   const date = new Date(timestamp);
@@ -271,9 +264,14 @@ const AnalyticsDashboard: React.FC = () => {
       });
 
       setSchools(schoolsResponse.map((school: any) => ({
-        id: school.schoolId,
+        id: school.id ?? school.schoolId,
         schoolName: school.schoolName,
+        censusNo: school.censusNo,
         serialNumber: school.serialNumber,
+        province: school.province ?? undefined,
+        district: school.district ?? undefined,
+        zone: school.zone ?? undefined,
+        installationDate: school.installationDate ?? undefined,
         totalReadingTimeMs: school.totalReadingTimeMs,
         totalReadingTimeHours: school.totalReadingTimeHours,
         totalBooksAccessed: school.totalBooksAccessed,
@@ -281,6 +279,9 @@ const AnalyticsDashboard: React.FC = () => {
         lastSyncTime: school.lastSyncTime,
         isActive: school.isActive,
         weeklyReadingTimeMs: school.weeklyReadingTimeMs ?? 0,
+        weeklyBooksAccessed: school.weeklyBooksAccessed ?? 0,
+        gradeWiseWeeklyUsage: school.gradeWiseWeeklyUsage ?? [],
+        weeklyUsagePercentage: school.weeklyUsagePercentage ?? 0,
       })));
 
       setPopularBooks(booksResponse.map((book: any) => ({
@@ -337,13 +338,18 @@ const AnalyticsDashboard: React.FC = () => {
 
   const handleExportSchools = () => {
     const exportData = filteredSchools.map(school => ({
+      'Census Number': school.censusNo ?? school.serialNumber,
       'School Name': school.schoolName,
-      'Serial Number': school.serialNumber,
-      'Total Reading Time (hours)': convertMsToHours(school.totalReadingTimeMs),
-      'Weekly Reading Time (min)': convertMsToMinutes(school.weeklyReadingTimeMs),
-      'Books Accessed': school.totalBooksAccessed,
-      'Total Records': school.totalRecords,
+      'Province': school.province ?? '',
+      'District': school.district ?? '',
+      'Zone': school.zone ?? '',
+      'Installation Date': school.installationDate ? formatSyncTimestamp(school.installationDate) : '',
       'Last Sync': formatSyncTimestamp(school.lastSyncTime),
+      'Books Accessed (Weekly)': school.weeklyBooksAccessed ?? 0,
+      'Total Reading Time (hrs)': school.totalReadingTimeHours.toFixed(2),
+      'Weekly Reading Time (min)': convertMsToMinutes(school.weeklyReadingTimeMs),
+      'Weekly Target % (2×20min)': `${(school.weeklyUsagePercentage ?? 0).toFixed(1)}%`,
+      'Total Records': school.totalRecords,
       'Status': school.isActive ? 'Active' : 'Inactive',
     }));
     exportToCSV(exportData, 'schools_analytics');
@@ -686,30 +692,33 @@ const AnalyticsDashboard: React.FC = () => {
                     </Button>
                   </Stack>
                 </Stack>
-                <TableContainer sx={{ '& .MuiTableSortLabel-icon': { opacity: 0.35, transition: 'opacity 0.2s' }, '& .MuiTableSortLabel-root.Mui-active .MuiTableSortLabel-icon': { opacity: 1 }, '& .MuiTableSortLabel-root': { flexDirection: 'row' } }}>
-                  <Table>
+                <TableContainer sx={{ overflowX: 'hidden', '& .MuiTableSortLabel-icon': { opacity: 0.35, transition: 'opacity 0.2s' }, '& .MuiTableSortLabel-root.Mui-active .MuiTableSortLabel-icon': { opacity: 1 }, '& .MuiTableSortLabel-root': { flexDirection: 'row' } }}>
+                  <Table sx={{ tableLayout: 'fixed', width: '100%', '& td, & th': { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>
                     <TableHead>
                       <TableRow sx={{ bgcolor: 'grey.50' }}>
+                        <TableCell sx={{ fontWeight: 600 }}>Census Number</TableCell>
                         <TableCell sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'schoolName' ? schoolsSort.direction : false}>
                           <TableSortLabel active={schoolsSort.column === 'schoolName'} direction={schoolsSort.column === 'schoolName' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('schoolName')}>School Name</TableSortLabel>
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'serialNumber' ? schoolsSort.direction : false}>
-                          <TableSortLabel active={schoolsSort.column === 'serialNumber'} direction={schoolsSort.column === 'serialNumber' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('serialNumber')}>Serial Number</TableSortLabel>
-                        </TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'totalReadingTimeMs' ? schoolsSort.direction : false}>
-                          <TableSortLabel active={schoolsSort.column === 'totalReadingTimeMs'} direction={schoolsSort.column === 'totalReadingTimeMs' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('totalReadingTimeMs')}>Reading Time (min)</TableSortLabel>
-                        </TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'weeklyReadingTimeMs' ? schoolsSort.direction : false}>
-                          <TableSortLabel active={schoolsSort.column === 'weeklyReadingTimeMs'} direction={schoolsSort.column === 'weeklyReadingTimeMs' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('weeklyReadingTimeMs')}>Weekly Time (min)</TableSortLabel>
-                        </TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'totalBooksAccessed' ? schoolsSort.direction : false}>
-                          <TableSortLabel active={schoolsSort.column === 'totalBooksAccessed'} direction={schoolsSort.column === 'totalBooksAccessed' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('totalBooksAccessed')}>Books Accessed</TableSortLabel>
-                        </TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'totalRecords' ? schoolsSort.direction : false}>
-                          <TableSortLabel active={schoolsSort.column === 'totalRecords'} direction={schoolsSort.column === 'totalRecords' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('totalRecords')}>Total Records</TableSortLabel>
-                        </TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>Province</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>District</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>Zone</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>Installation Date</TableCell>
                         <TableCell sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'lastSyncTime' ? schoolsSort.direction : false}>
                           <TableSortLabel active={schoolsSort.column === 'lastSyncTime'} direction={schoolsSort.column === 'lastSyncTime' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('lastSyncTime')}>Last Sync</TableSortLabel>
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'totalBooksAccessed' ? schoolsSort.direction : false}>
+                          <TableSortLabel active={schoolsSort.column === 'totalBooksAccessed'} direction={schoolsSort.column === 'totalBooksAccessed' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('totalBooksAccessed')}>Books Accessed (Weekly)</TableSortLabel>
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'totalReadingTimeMs' ? schoolsSort.direction : false}>
+                          <TableSortLabel active={schoolsSort.column === 'totalReadingTimeMs'} direction={schoolsSort.column === 'totalReadingTimeMs' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('totalReadingTimeMs')}>Total Reading Time (hrs)</TableSortLabel>
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'weeklyReadingTimeMs' ? schoolsSort.direction : false}>
+                          <TableSortLabel active={schoolsSort.column === 'weeklyReadingTimeMs'} direction={schoolsSort.column === 'weeklyReadingTimeMs' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('weeklyReadingTimeMs')}>Weekly Reading Time (min)</TableSortLabel>
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>Weekly Target % (2×20min)</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'totalRecords' ? schoolsSort.direction : false}>
+                          <TableSortLabel active={schoolsSort.column === 'totalRecords'} direction={schoolsSort.column === 'totalRecords' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('totalRecords')}>Total Records</TableSortLabel>
                         </TableCell>
                         <TableCell sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'isActive' ? schoolsSort.direction : false}>
                           <TableSortLabel active={schoolsSort.column === 'isActive'} direction={schoolsSort.column === 'isActive' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('isActive')}>Status</TableSortLabel>
@@ -721,19 +730,26 @@ const AnalyticsDashboard: React.FC = () => {
                         .slice(schoolsPage * schoolsRowsPerPage, schoolsPage * schoolsRowsPerPage + schoolsRowsPerPage)
                         .map((school) => (
                           <TableRow key={school.id} hover>
+                            <TableCell>{school.censusNo ?? school.serialNumber}</TableCell>
                             <TableCell>{school.schoolName}</TableCell>
-                            <TableCell>{school.serialNumber}</TableCell>
-                            <TableCell align="right">
-                              {convertMsToMinutes(school.totalReadingTimeMs)}
+                            <TableCell>{school.province ?? '—'}</TableCell>
+                            <TableCell>{school.district ?? '—'}</TableCell>
+                            <TableCell>{school.zone ?? '—'}</TableCell>
+                            <TableCell>
+                              {school.installationDate ? formatSyncTimestamp(school.installationDate) : '—'}
                             </TableCell>
-                            <TableCell align="right">
-                              {convertMsToMinutes(school.weeklyReadingTimeMs)}
-                            </TableCell>
-                            <TableCell align="right">{school.totalBooksAccessed}</TableCell>
-                            <TableCell align="right">{school.totalRecords}</TableCell>
                             <TableCell>
                               {formatSyncTimestamp(school.lastSyncTime)}
                             </TableCell>
+                            <TableCell align="right">{school.weeklyBooksAccessed ?? 0}</TableCell>
+                            <TableCell align="right">{school.totalReadingTimeHours.toFixed(2)}</TableCell>
+                            <TableCell align="right">
+                              {convertMsToMinutes(school.weeklyReadingTimeMs)}
+                            </TableCell>
+                            <TableCell align="right">
+                              {(school.weeklyUsagePercentage ?? 0).toFixed(1)}%
+                            </TableCell>
+                            <TableCell align="right">{school.totalRecords}</TableCell>
                             <TableCell>
                               <Chip
                                 label={school.isActive ? 'Active' : 'Inactive'}

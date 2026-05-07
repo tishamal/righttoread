@@ -120,7 +120,7 @@ const SchoolDownloads: React.FC = () => {
           <DeviceIcon sx={{ fontSize: 32, color: 'primary.main' }} />
           <Box>
             <Typography variant="h4" fontWeight="bold">
-              School Downloads
+              School Downloads 
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Devices that have registered and downloaded the app
