@@ -16,7 +16,6 @@ import {
   CircularProgress,
 } from '@mui/material';
 import {
-  Email as EmailIcon,
   Lock as LockIcon,
   Visibility,
   VisibilityOff,
