@@ -746,6 +746,19 @@ export const bookDictionaryAPI = {
       throw error;
     }
   },
+
+  async generateAndAddWord(bookName: string, word: string): Promise<DictionaryWord> {
+    try {
+      const data = await httpClient.post<DictionaryWord>(
+        API_ENDPOINTS.generateDictionaryWord(bookName),
+        { word }
+      );
+      return data;
+    } catch (error) {
+      console.error('Error generating dictionary word:', error);
+      throw error;
+    }
+  },
 };
 
 export default api;

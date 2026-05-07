@@ -48,6 +48,8 @@ export const API_ENDPOINTS = {
   bookDictionary: (bookName: string) => `${TTS_SERVICE_URL}/v1/books/${encodeURIComponent(bookName)}/dictionary`,
   updateDictionaryWord: (bookName: string, word: string) =>
     `${TTS_SERVICE_URL}/v1/books/${encodeURIComponent(bookName)}/dictionary/${encodeURIComponent(word)}`,
+  generateDictionaryWord: (bookName: string) =>
+    `${TTS_SERVICE_URL}/v1/books/${encodeURIComponent(bookName)}/dictionary/generate`,
 
   // Audio Library
   audioLibrary: {
