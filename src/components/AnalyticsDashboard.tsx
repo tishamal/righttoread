@@ -21,6 +21,7 @@ import {
   TableHead,
   TableRow,
   TablePagination,
+  TableSortLabel,
   TextField,
   InputAdornment,
   IconButton,
@@ -105,7 +106,7 @@ interface StatCardProps {
 const StatCard: React.FC<StatCardProps> = ({ title, value, change, icon, loading }) => {
   if (loading) {
     return (
-      <Paper sx={{ p: 3 }}>
+      <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
         <Skeleton variant="text" width="60%" />
         <Skeleton variant="text" width="40%" height={40} />
         <Skeleton variant="text" width="30%" />
@@ -114,15 +115,46 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, change, icon, loading
   }
 
   return (
-    <Paper sx={{ p: 3, height: '100%' }}>
+    <Paper
+      elevation={0}
+      sx={{
+        p: 3,
+        height: '100%',
+        borderRadius: 3,
+        border: '1px solid',
+        borderColor: 'divider',
+        transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+        '&:hover': {
+          boxShadow: '0 6px 20px rgba(99,102,241,0.10)',
+          transform: 'translateY(-2px)',
+        },
+      }}
+    >
       <Stack spacing={1}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography color="text.secondary" variant="body2">
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+          <Typography
+            color="text.secondary"
+            variant="body2"
+            fontWeight={500}
+            sx={{ textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.08em' }}
+          >
             {title}
           </Typography>
-          <Box sx={{ color: 'primary.main' }}>{icon}</Box>
+          <Box
+            sx={{
+              color: 'primary.main',
+              bgcolor: 'rgba(99,102,241,0.1)',
+              borderRadius: 2,
+              p: 0.8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {icon}
+          </Box>
         </Stack>
-        <Typography variant="h4" fontWeight="bold">
+        <Typography variant="h4" fontWeight={700} sx={{ letterSpacing: '-0.5px', lineHeight: 1.2 }}>
           {value}
         </Typography>
         {change !== undefined && (
@@ -135,6 +167,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, change, icon, loading
             <Typography
               color={change >= 0 ? 'success.main' : 'error.main'}
               variant="body2"
+              fontWeight={500}
             >
               {Math.abs(change)}% vs last period
             </Typography>
@@ -166,6 +199,11 @@ const AnalyticsDashboard: React.FC = () => {
   const [booksRowsPerPage, setBooksRowsPerPage] = useState(10);
   const [logsPage, setLogsPage] = useState(0);
   const [logsRowsPerPage, setLogsRowsPerPage] = useState(10);
+
+  // Sort states
+  const [schoolsSort, setSchoolsSort] = useState<{ column: string; direction: 'asc' | 'desc' }>({ column: 'schoolName', direction: 'asc' });
+  const [booksSort, setBooksSort] = useState<{ column: string; direction: 'asc' | 'desc' }>({ column: 'totalAccessCount', direction: 'desc' });
+  const [logsSort, setLogsSort] = useState<{ column: string; direction: 'asc' | 'desc' }>({ column: 'syncTimestamp', direction: 'desc' });
 
   // Search/filter states
   const [schoolSearch, setSchoolSearch] = useState('');
@@ -335,6 +373,36 @@ const AnalyticsDashboard: React.FC = () => {
     exportToCSV(exportData, 'sync_logs');
   };
 
+  // Sort utility
+  const sortData = (data: any[], column: string, direction: 'asc' | 'desc'): any[] => {
+    return [...data].sort((a, b) => {
+      const aVal = a[column];
+      const bVal = b[column];
+      let result = 0;
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        result = aVal.localeCompare(bVal);
+      } else if (aVal !== null && aVal !== undefined && bVal !== null && bVal !== undefined) {
+        result = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      }
+      return direction === 'asc' ? result : -result;
+    });
+  };
+
+  const handleSchoolsSort = (column: string) => {
+    setSchoolsSort(prev => ({ column, direction: prev.column === column && prev.direction === 'asc' ? 'desc' : 'asc' }));
+    setSchoolsPage(0);
+  };
+
+  const handleBooksSort = (column: string) => {
+    setBooksSort(prev => ({ column, direction: prev.column === column && prev.direction === 'asc' ? 'desc' : 'asc' }));
+    setBooksPage(0);
+  };
+
+  const handleLogsSort = (column: string) => {
+    setLogsSort(prev => ({ column, direction: prev.column === column && prev.direction === 'asc' ? 'desc' : 'asc' }));
+    setLogsPage(0);
+  };
+
   // Filtered data
   const filteredSchools = schools.filter(school =>
     school.schoolName.toLowerCase().includes(schoolSearch.toLowerCase()) ||
@@ -352,6 +420,11 @@ const AnalyticsDashboard: React.FC = () => {
     return true;
   });
 
+  // Sorted data
+  const sortedSchools = sortData(filteredSchools, schoolsSort.column, schoolsSort.direction);
+  const sortedBooks = sortData(filteredBooks, booksSort.column, booksSort.direction);
+  const sortedLogs = sortData(filteredLogs, logsSort.column, logsSort.direction);
+
   // Calculate sync success rate
   const syncSuccessRate = syncLogs.length > 0
     ? Math.round((syncLogs.filter(log => log.success).length / syncLogs.length) * 100)
@@ -363,10 +436,10 @@ const AnalyticsDashboard: React.FC = () => {
     : 0;
 
   return (
-    <Box p={3}>
+    <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: '#f8fafc', minHeight: '100vh' }}>
       {/* Header */}
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
-        <Typography variant="h4" fontWeight="bold">
+        <Typography variant="h4" fontWeight={700} sx={{ letterSpacing: '-0.5px' }}>
           Analytics Dashboard
         </Typography>
         <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
@@ -465,8 +538,8 @@ const AnalyticsDashboard: React.FC = () => {
           <Grid container spacing={3} mb={4}>
             {/* Reading Activity Over Time */}
             <Grid item xs={12} lg={8}>
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="h6" fontWeight={600} gutterBottom>
                   Reading Activity Over Time
                 </Typography>
                 <ResponsiveContainer width="100%" height={300}>
@@ -504,8 +577,8 @@ const AnalyticsDashboard: React.FC = () => {
 
             {/* Grade Distribution */}
             <Grid item xs={12} lg={4}>
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="h6" fontWeight={600} gutterBottom>
                   Usage by Grade
                 </Typography>
                 {gradeDistribution.length > 0 ? (
@@ -542,8 +615,8 @@ const AnalyticsDashboard: React.FC = () => {
 
             {/* Most Popular Books */}
             <Grid item xs={12}>
-              <Paper sx={{ p: 3, width: '100%' }}>
-                <Typography variant="h6" gutterBottom>
+              <Paper elevation={0} sx={{ p: 3, width: '100%', borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="h6" fontWeight={600} gutterBottom>
                   Most Popular Books
                 </Typography>
                 <Box sx={{ width: '100%', height: 450 }}>
@@ -586,9 +659,9 @@ const AnalyticsDashboard: React.FC = () => {
           <Grid container spacing={3} mt={1}>
             {/* Schools Table */}
             <Grid item xs={12}>
-              <Paper sx={{ p: 3 }}>
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Typography variant="h6">Schools Overview</Typography>
+                  <Typography variant="h6" fontWeight={600}>Schools Overview</Typography>
                   <Stack direction="row" spacing={2}>
                     <TextField
                       size="small"
@@ -613,22 +686,38 @@ const AnalyticsDashboard: React.FC = () => {
                     </Button>
                   </Stack>
                 </Stack>
-                <TableContainer>
+                <TableContainer sx={{ '& .MuiTableSortLabel-icon': { opacity: 0.35, transition: 'opacity 0.2s' }, '& .MuiTableSortLabel-root.Mui-active .MuiTableSortLabel-icon': { opacity: 1 }, '& .MuiTableSortLabel-root': { flexDirection: 'row' } }}>
                   <Table>
                     <TableHead>
-                      <TableRow>
-                        <TableCell>School Name</TableCell>
-                        <TableCell>Serial Number</TableCell>
-                        <TableCell align="right">Reading Time (min)</TableCell>
-                        <TableCell align="right">Weekly Time (min)</TableCell>
-                        <TableCell align="right">Books Accessed</TableCell>
-                        <TableCell align="right">Total Records</TableCell>
-                        <TableCell>Last Sync</TableCell>
-                        <TableCell>Status</TableCell>
+                      <TableRow sx={{ bgcolor: 'grey.50' }}>
+                        <TableCell sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'schoolName' ? schoolsSort.direction : false}>
+                          <TableSortLabel active={schoolsSort.column === 'schoolName'} direction={schoolsSort.column === 'schoolName' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('schoolName')}>School Name</TableSortLabel>
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'serialNumber' ? schoolsSort.direction : false}>
+                          <TableSortLabel active={schoolsSort.column === 'serialNumber'} direction={schoolsSort.column === 'serialNumber' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('serialNumber')}>Serial Number</TableSortLabel>
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'totalReadingTimeMs' ? schoolsSort.direction : false}>
+                          <TableSortLabel active={schoolsSort.column === 'totalReadingTimeMs'} direction={schoolsSort.column === 'totalReadingTimeMs' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('totalReadingTimeMs')}>Reading Time (min)</TableSortLabel>
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'weeklyReadingTimeMs' ? schoolsSort.direction : false}>
+                          <TableSortLabel active={schoolsSort.column === 'weeklyReadingTimeMs'} direction={schoolsSort.column === 'weeklyReadingTimeMs' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('weeklyReadingTimeMs')}>Weekly Time (min)</TableSortLabel>
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'totalBooksAccessed' ? schoolsSort.direction : false}>
+                          <TableSortLabel active={schoolsSort.column === 'totalBooksAccessed'} direction={schoolsSort.column === 'totalBooksAccessed' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('totalBooksAccessed')}>Books Accessed</TableSortLabel>
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'totalRecords' ? schoolsSort.direction : false}>
+                          <TableSortLabel active={schoolsSort.column === 'totalRecords'} direction={schoolsSort.column === 'totalRecords' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('totalRecords')}>Total Records</TableSortLabel>
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'lastSyncTime' ? schoolsSort.direction : false}>
+                          <TableSortLabel active={schoolsSort.column === 'lastSyncTime'} direction={schoolsSort.column === 'lastSyncTime' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('lastSyncTime')}>Last Sync</TableSortLabel>
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 600 }} sortDirection={schoolsSort.column === 'isActive' ? schoolsSort.direction : false}>
+                          <TableSortLabel active={schoolsSort.column === 'isActive'} direction={schoolsSort.column === 'isActive' ? schoolsSort.direction : 'asc'} onClick={() => handleSchoolsSort('isActive')}>Status</TableSortLabel>
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {filteredSchools
+                      {sortedSchools
                         .slice(schoolsPage * schoolsRowsPerPage, schoolsPage * schoolsRowsPerPage + schoolsRowsPerPage)
                         .map((school) => (
                           <TableRow key={school.id} hover>
@@ -659,7 +748,7 @@ const AnalyticsDashboard: React.FC = () => {
                 </TableContainer>
                 <TablePagination
                   component="div"
-                  count={filteredSchools.length}
+                  count={sortedSchools.length}
                   page={schoolsPage}
                   onPageChange={(_, newPage) => setSchoolsPage(newPage)}
                   rowsPerPage={schoolsRowsPerPage}
@@ -673,9 +762,9 @@ const AnalyticsDashboard: React.FC = () => {
 
             {/* Books Table */}
             <Grid item xs={12}>
-              <Paper sx={{ p: 3 }}>
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Typography variant="h6">Books Performance</Typography>
+                  <Typography variant="h6" fontWeight={600}>Books Performance</Typography>
                   <Stack direction="row" spacing={2}>
                     <TextField
                       size="small"
@@ -700,20 +789,32 @@ const AnalyticsDashboard: React.FC = () => {
                     </Button>
                   </Stack>
                 </Stack>
-                <TableContainer>
+                <TableContainer sx={{ '& .MuiTableSortLabel-icon': { opacity: 0.35, transition: 'opacity 0.2s' }, '& .MuiTableSortLabel-root.Mui-active .MuiTableSortLabel-icon': { opacity: 1 }, '& .MuiTableSortLabel-root': { flexDirection: 'row' } }}>
                   <Table>
                     <TableHead>
-                      <TableRow>
-                        <TableCell>Book Title</TableCell>
-                        <TableCell align="center">Grade</TableCell>
-                        <TableCell align="right">Total Time</TableCell>
-                        <TableCell align="right">Schools Using</TableCell>
-                        <TableCell align="right">Times Opened</TableCell>
-                        <TableCell align="right">Avg Session</TableCell>
+                      <TableRow sx={{ bgcolor: 'grey.50' }}>
+                        <TableCell sx={{ fontWeight: 600 }} sortDirection={booksSort.column === 'bookTitle' ? booksSort.direction : false}>
+                          <TableSortLabel active={booksSort.column === 'bookTitle'} direction={booksSort.column === 'bookTitle' ? booksSort.direction : 'asc'} onClick={() => handleBooksSort('bookTitle')}>Book Title</TableSortLabel>
+                        </TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 600 }} sortDirection={booksSort.column === 'grade' ? booksSort.direction : false}>
+                          <TableSortLabel active={booksSort.column === 'grade'} direction={booksSort.column === 'grade' ? booksSort.direction : 'asc'} onClick={() => handleBooksSort('grade')}>Grade</TableSortLabel>
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }} sortDirection={booksSort.column === 'totalActiveTimeMs' ? booksSort.direction : false}>
+                          <TableSortLabel active={booksSort.column === 'totalActiveTimeMs'} direction={booksSort.column === 'totalActiveTimeMs' ? booksSort.direction : 'asc'} onClick={() => handleBooksSort('totalActiveTimeMs')}>Total Time</TableSortLabel>
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }} sortDirection={booksSort.column === 'uniqueSchools' ? booksSort.direction : false}>
+                          <TableSortLabel active={booksSort.column === 'uniqueSchools'} direction={booksSort.column === 'uniqueSchools' ? booksSort.direction : 'asc'} onClick={() => handleBooksSort('uniqueSchools')}>Schools Using</TableSortLabel>
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }} sortDirection={booksSort.column === 'totalAccessCount' ? booksSort.direction : false}>
+                          <TableSortLabel active={booksSort.column === 'totalAccessCount'} direction={booksSort.column === 'totalAccessCount' ? booksSort.direction : 'asc'} onClick={() => handleBooksSort('totalAccessCount')}>Times Opened</TableSortLabel>
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }} sortDirection={booksSort.column === 'avgSessionTimeMs' ? booksSort.direction : false}>
+                          <TableSortLabel active={booksSort.column === 'avgSessionTimeMs'} direction={booksSort.column === 'avgSessionTimeMs' ? booksSort.direction : 'asc'} onClick={() => handleBooksSort('avgSessionTimeMs')}>Avg Session</TableSortLabel>
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {filteredBooks
+                      {sortedBooks
                         .slice(booksPage * booksRowsPerPage, booksPage * booksRowsPerPage + booksRowsPerPage)
                         .map((book) => (
                           <TableRow key={book.bookId} hover>
@@ -740,7 +841,7 @@ const AnalyticsDashboard: React.FC = () => {
                 </TableContainer>
                 <TablePagination
                   component="div"
-                  count={filteredBooks.length}
+                  count={sortedBooks.length}
                   page={booksPage}
                   onPageChange={(_, newPage) => setBooksPage(newPage)}
                   rowsPerPage={booksRowsPerPage}
@@ -754,9 +855,9 @@ const AnalyticsDashboard: React.FC = () => {
 
             {/* Sync Logs Table */}
             <Grid item xs={12}>
-              <Paper sx={{ p: 3 }}>
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Typography variant="h6">Recent Sync Logs</Typography>
+                  <Typography variant="h6" fontWeight={600}>Recent Sync Logs</Typography>
                   <Stack direction="row" spacing={2}>
                     <FormControl size="small" sx={{ minWidth: 150 }}>
                       <InputLabel>Status</InputLabel>
@@ -780,20 +881,30 @@ const AnalyticsDashboard: React.FC = () => {
                     </Button>
                   </Stack>
                 </Stack>
-                <TableContainer>
+                <TableContainer sx={{ '& .MuiTableSortLabel-icon': { opacity: 0.35, transition: 'opacity 0.2s' }, '& .MuiTableSortLabel-root.Mui-active .MuiTableSortLabel-icon': { opacity: 1 }, '& .MuiTableSortLabel-root': { flexDirection: 'row' } }}>
                   <Table>
                     <TableHead>
-                      <TableRow>
-                        <TableCell>Timestamp</TableCell>
-                        <TableCell>Census No</TableCell>
-                        <TableCell>School</TableCell>
-                        <TableCell align="right">Records Processed</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell>Error Message</TableCell>
+                      <TableRow sx={{ bgcolor: 'grey.50' }}>
+                        <TableCell sx={{ fontWeight: 600 }} sortDirection={logsSort.column === 'syncTimestamp' ? logsSort.direction : false}>
+                          <TableSortLabel active={logsSort.column === 'syncTimestamp'} direction={logsSort.column === 'syncTimestamp' ? logsSort.direction : 'asc'} onClick={() => handleLogsSort('syncTimestamp')}>Timestamp</TableSortLabel>
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 600 }} sortDirection={logsSort.column === 'censusNo' ? logsSort.direction : false}>
+                          <TableSortLabel active={logsSort.column === 'censusNo'} direction={logsSort.column === 'censusNo' ? logsSort.direction : 'asc'} onClick={() => handleLogsSort('censusNo')}>Census No</TableSortLabel>
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 600 }} sortDirection={logsSort.column === 'schoolName' ? logsSort.direction : false}>
+                          <TableSortLabel active={logsSort.column === 'schoolName'} direction={logsSort.column === 'schoolName' ? logsSort.direction : 'asc'} onClick={() => handleLogsSort('schoolName')}>School</TableSortLabel>
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }} sortDirection={logsSort.column === 'recordsProcessed' ? logsSort.direction : false}>
+                          <TableSortLabel active={logsSort.column === 'recordsProcessed'} direction={logsSort.column === 'recordsProcessed' ? logsSort.direction : 'asc'} onClick={() => handleLogsSort('recordsProcessed')}>Records Processed</TableSortLabel>
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 600 }} sortDirection={logsSort.column === 'success' ? logsSort.direction : false}>
+                          <TableSortLabel active={logsSort.column === 'success'} direction={logsSort.column === 'success' ? logsSort.direction : 'asc'} onClick={() => handleLogsSort('success')}>Status</TableSortLabel>
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>Error Message</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {filteredLogs
+                      {sortedLogs
                         .slice(logsPage * logsRowsPerPage, logsPage * logsRowsPerPage + logsRowsPerPage)
                         .map((log) => (
                           <TableRow key={log.id} hover>
@@ -832,7 +943,7 @@ const AnalyticsDashboard: React.FC = () => {
                 </TableContainer>
                 <TablePagination
                   component="div"
-                  count={filteredLogs.length}
+                  count={sortedLogs.length}
                   page={logsPage}
                   onPageChange={(_, newPage) => setLogsPage(newPage)}
                   rowsPerPage={logsRowsPerPage}
